@@ -2,125 +2,71 @@
 
 **A calm, local evening wind-down agent** that helps you close the day - slowly, kindly, and completely offline.
 
-> Built for the **Hacktoberfest Open-Source AI Challenge: Week 3 - Slow and Steady**
+> Built for the **Hacktoberfest Open-Source AI Challenge: Week 3 – Slow and Steady**
+
+Live demo (after deploy): will appear here once Render Blueprint is live.
 
 ---
 
 ## The Problem
 
 Most of us end the day with mental clutter still open.  
-Unfinished thoughts keep looping. Tasks float in the background. It becomes hard to properly rest.
+Unfinished thoughts keep looping. It becomes hard to properly rest.
 
 ## The Solution
 
-SlothCloser reads whatever you dump (messy notes, journal entries, random thoughts) and gently gives you:
+SlothCloser reads whatever you dump and gently gives you:
 
-1. **A short, human day summary**
-2. **The few things still open** (so your brain can stop looping)
-3. **A soft bedtime reflection** so you can actually put the day down
+1. A short, human **day summary**
+2. The few things **still open**
+3. A soft **bedtime reflection** (shaped by mood)
+4. **One tiny thing for tomorrow** (so the morning feels lighter)
+5. An **ambient soundscape prompt** you can imagine or paste into any free generator
 
-It rewards laziness: the AI does the emotional + organizational closing work for you.
+It rewards laziness: the AI does the closing work so you don’t have to.
 
 ---
 
-## Why Open-Source AI Matters Here
+## Why Open-Source AI Matters
 
 | Benefit | Why it matters |
 |---------|----------------|
-| **Fully local** | Your private evening thoughts never leave your machine |
-| **Works offline** | No internet required after the model is downloaded |
-| **Zero ongoing cost** | Set it up once, use it forever |
-| **Swappable models** | Use Gemma, Llama, Qwen, Phi… whatever you prefer |
-| **No surveillance** | A closed API could never offer the same privacy |
-
-This is the kind of tool that only makes sense with open-weight models.
+| Fully local | Your private evening thoughts never leave your machine |
+| Works offline | No internet required after the model is downloaded |
+| Zero ongoing cost | Set it up once, use it forever |
+| Swappable models | Gemma, Llama, Qwen, Phi… whatever you prefer |
+| No surveillance | A closed API could never offer the same privacy |
 
 ---
 
 ## Features
 
-- 100% offline once the model is downloaded
-- Works with any Ollama model (Gemma recommended)
-- Beautiful calm dark UI
-- Paste notes or upload a `.md` / `.txt` file
-- One-click “Close my day”
-- Graceful offline fallback (so public demos never break)
+- Local open-weight models via Ollama (Gemma recommended)
+- Optional mood that gently shapes the reflection
+- One tiny thing for tomorrow
+- Ambient soundscape prompt
+- Graceful offline fallback (public demo never breaks)
+- Session history + example loader
 - Download the closing as markdown
-- Zero telemetry
+- Calm dark UI
 
 ---
 
-## Quick Start
+## Quick Start (Local)
 
-### 1. Install Ollama
 ```bash
+# 1. Ollama
 curl -fsSL https://ollama.com/install.sh | sh
-```
-
-### 2. Pull a model
-```bash
 ollama pull gemma2:2b
-# or llama3.2:3b / qwen2.5:3b etc.
-```
 
-### 3. Run SlothCloser
-```bash
-git clone https://github.com/YOUR_USERNAME/sloth-closer.git
-cd sloth-closer
-
+# 2. App
+git clone https://github.com/meenanoolu/SlothCloser.git
+cd SlothCloser
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
-
 pip install -r requirements.txt
 streamlit run app.py
 ```
-
-Open the URL shown (usually http://localhost:8501).
-
----
-
-## Tech Stack
-
-- **Frontend**: Streamlit (calm custom dark theme)
-- **AI**: Ollama + open-weight models (Gemma by default)
-- **Language**: Python
-- **Deployment**: Works on Render (with graceful fallback)
-
----
-
-## Project Structure
-
-```
-sloth-closer/
-├── app.py            # Streamlit UI
-├── agent.py          # Ollama agent + offline fallback
-├── prompts.py        # All prompts (easy to edit tone)
-├── config.py         # Settings
-├── Procfile          # For Render deployment
-├── requirements.txt
-└── README.md
-```
-
----
-
-## Deploy on Render
-
-1. Push this repo to GitHub
-2. Create a new **Web Service** on [Render](https://render.com)
-3. Use these settings:
-
-| Setting         | Value                                                                 |
-|-----------------|-----------------------------------------------------------------------|
-| Build Command   | `pip install -r requirements.txt`                                     |
-| Start Command   | `streamlit run app.py --server.port $PORT --server.address 0.0.0.0`   |
-
-The public demo will automatically use the calm offline fallback if Ollama is not available on the server.
-
----
-
-## License
-
-MIT
 
 ---
 
