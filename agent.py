@@ -1,9 +1,8 @@
 """
 Core agent logic for SlothCloser.
-- Tries local Ollama + open-weight model first (best experience)
-- Falls back to a high-quality offline response if Ollama is unavailable
-  (so the public Render demo always works and never crashes)
-- Supports optional mood to gently shape the bedtime reflection
+- Tries local Ollama + open-weight model first
+- Falls back to high-quality offline responses if Ollama is unavailable
+- Supports mood, "one tiny thing for tomorrow", and ambient prompt
 """
 
 import re
@@ -17,8 +16,12 @@ from prompts import (
     SUMMARY_PROMPT,
     TASKS_PROMPT,
     BEDTIME_PROMPT,
+    TOMORROW_PROMPT,
+    AMBIENT_PROMPT,
     MOOD_INSTRUCTIONS,
 )
+
+
 
 
 class SlothAgent:
@@ -26,8 +29,8 @@ class SlothAgent:
         self.model = model
         self.used_fallback = False
 
-    def _chat(self, prompt: str, max_tokens: int = 200) -> Optional[str]:
-        """Try to talk to the local model. Returns None on failure."""
+    def _chat(self, prompt: str, max_tokens: int = 160) -> Optional[str]:
+        """Try local model. Returns None on any failure."""
         try:
             response = ollama.chat(
                 model=self.model,
@@ -44,94 +47,92 @@ class SlothAgent:
         except Exception:
             return None
 
+    # ---------- Fallbacks (instant) ----------
     def _fallback_summary(self, notes: str) -> str:
         lines = [l.strip() for l in notes.strip().split("\n") if l.strip()]
         if not lines:
             return "A quiet day. Nothing much needed to be written down."
-
-        preview = " ".join(lines[:3])
-        if len(preview) > 140:
-            preview = preview[:137] + "..."
-
+        preview = " ".join(lines[:2])
+        if len(preview) > 120:
+            preview = preview[:117] + "..."
         return (
-            f"Today held a few quiet moments and small movements. "
-            f"You noted: {preview} "
-            f"Overall it feels like a day that asked for patience more than speed."
+            f"Today moved at its own pace. You noted: {preview} "
+            f"It feels like a day that preferred patience over speed."
         )
 
     def _fallback_open_loops(self, notes: str) -> str:
         text = notes.lower()
         candidates = []
-
         patterns = [
             r"(still need to|need to|have to|should|must|todo|to-do|remember to)\s+([^.!\n]+)",
             r"(reply to|email|message|call|finish|complete|send|write)\s+([^.!\n]+)",
         ]
-
         for pattern in patterns:
             for match in re.finditer(pattern, text):
                 item = match.group(0).strip().capitalize()
                 if len(item) > 8 and item not in candidates:
                     candidates.append(item)
-
         if candidates:
-            return "\n".join(f"• {c}" for c in candidates[:4])
-
+            return "\n".join(f"• {c}" for c in candidates[:3])
         return "Nothing clearly left open. The day looks complete."
 
-    def _fallback_bedtime(self, notes: str, mood: str = "neutral") -> str:
-        base = (
-            "The day is finished, even if a few threads remain. "
-            "You showed up, did what you could, and that is enough. "
-            "Let the remaining pieces wait until morning. "
-            "For now, the only task left is to rest. "
-            "Sleep well — tomorrow will meet you when you are ready."
-        )
-
+    def _fallback_bedtime(self, mood: str = "neutral") -> str:
         if mood == "tired":
             return (
                 "You are tired, and that is information worth listening to. "
                 "The day does not need any more effort from you tonight. "
                 "Whatever is unfinished can wait in the quiet. "
-                "Rest is not a reward — it is part of the work. "
-                "Sleep well."
+                "Rest is not a reward — it is part of the work. Sleep well."
             )
         if mood == "heavy":
             return (
                 "Some days feel heavier than others. This seems to be one of them. "
                 "You do not have to solve anything right now. "
                 "The weight can sit beside you without being fixed. "
-                "Morning will come regardless. "
-                "For now, just set it down."
+                "Morning will come regardless. For now, just set it down."
             )
         if mood == "light":
             return (
                 "There is a quiet ease in the way this day ends. "
                 "Nothing dramatic, just a soft landing. "
-                "Hold on to that lightness for a moment. "
-                "It does not need to be earned or explained. "
-                "Rest easy."
+                "Hold on to that lightness for a moment. Rest easy."
             )
         if mood == "grateful":
             return (
                 "Gratitude does not have to be loud. "
                 "Even a small, quiet thank-you is enough. "
-                "Whatever good found its way to you today can stay with you into the night. "
-                "Sleep with that softness nearby."
+                "Whatever good found its way to you today can stay with you into the night."
             )
-        return base
+        return (
+            "The day is finished, even if a few threads remain. "
+            "You showed up, did what you could, and that is enough. "
+            "Let the remaining pieces wait until morning. Sleep well."
+        )
 
+    def _fallback_tomorrow(self) -> str:
+        return "Nothing urgent. Let tomorrow arrive gently."
+
+    def _fallback_ambient(self, mood: str = "neutral") -> str:
+        if mood == "tired":
+            return "Soft rain on a quiet window, distant thunder very far away, a single candle flame."
+        if mood == "heavy":
+            return "Low wind through pine trees at night, occasional creak of wood, deep steady breathing."
+        if mood == "light":
+            return "Early morning birds far off, a slow stream over smooth stones, warm light through curtains."
+        if mood == "grateful":
+            return "Gentle evening breeze through open windows, soft leaves, a distant soft laugh."
+        return "Quiet room at night, distant rain, the low hum of a house settling into sleep."
+
+    # ---------- Main methods ----------
     def summarize_day(self, notes: str) -> str:
-        prompt = SUMMARY_PROMPT.format(notes=notes.strip())
-        result = self._chat(prompt, max_tokens=180)
+        result = self._chat(SUMMARY_PROMPT.format(notes=notes.strip()), max_tokens=140)
         if result is None:
             self.used_fallback = True
             return self._fallback_summary(notes)
         return result
 
     def extract_open_loops(self, notes: str) -> str:
-        prompt = TASKS_PROMPT.format(notes=notes.strip())
-        result = self._chat(prompt, max_tokens=150)
+        result = self._chat(TASKS_PROMPT.format(notes=notes.strip()), max_tokens=120)
         if result is None:
             self.used_fallback = True
             return self._fallback_open_loops(notes)
@@ -141,47 +142,64 @@ class SlothAgent:
         mood_instruction = MOOD_INSTRUCTIONS.get(mood, "")
         if mood_instruction:
             mood_instruction = f"\n- {mood_instruction}"
-
-        prompt = BEDTIME_PROMPT.format(
-            notes=notes.strip(),
-            mood_instruction=mood_instruction,
-        )
-        result = self._chat(prompt, max_tokens=220)
+        prompt = BEDTIME_PROMPT.format(notes=notes.strip(), mood_instruction=mood_instruction)
+        result = self._chat(prompt, max_tokens=180)
         if result is None:
             self.used_fallback = True
-            return self._fallback_bedtime(notes, mood)
+            return self._fallback_bedtime(mood)
+        return result
+
+    def one_tiny_thing(self, notes: str) -> str:
+        result = self._chat(TOMORROW_PROMPT.format(notes=notes.strip()), max_tokens=60)
+        if result is None:
+            self.used_fallback = True
+            return self._fallback_tomorrow()
+        return result
+
+    def ambient_prompt(self, notes: str, mood: str = "neutral") -> str:
+        result = self._chat(AMBIENT_PROMPT.format(notes=notes.strip()), max_tokens=50)
+        if result is None:
+            self.used_fallback = True
+            return self._fallback_ambient(mood)
         return result
 
     def close_day(self, notes: str, mood: str = "neutral") -> dict:
-        """Run the full closing ritual."""
+        """Full closing ritual – returns everything needed by the UI."""
         self.used_fallback = False
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M")
 
         if not notes or not notes.strip():
             return {
                 "summary": "No notes provided.",
                 "open_loops": "Nothing to close.",
                 "bedtime": "Rest well. Tomorrow will wait for you.",
+                "tomorrow": "Nothing urgent. Let tomorrow arrive gently.",
+                "ambient": "Quiet room at night, soft rain in the distance.",
                 "used_fallback": False,
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "timestamp": ts,
                 "mood": mood,
             }
 
+        # Sequential but with lower token limits for speed
         summary = self.summarize_day(notes)
         open_loops = self.extract_open_loops(notes)
         bedtime = self.write_bedtime(notes, mood=mood)
+        tomorrow = self.one_tiny_thing(notes)
+        ambient = self.ambient_prompt(notes, mood=mood)
 
         return {
             "summary": summary,
             "open_loops": open_loops,
             "bedtime": bedtime,
+            "tomorrow": tomorrow,
+            "ambient": ambient,
             "used_fallback": self.used_fallback,
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "timestamp": ts,
             "mood": mood,
         }
 
 
 def list_available_models() -> list:
-    """Return models currently available in Ollama (works across library versions)."""
     try:
         result = ollama.list()
         models = (
@@ -189,7 +207,6 @@ def list_available_models() -> list:
             if isinstance(result, dict)
             else getattr(result, "models", []) or []
         )
-
         names = []
         for m in models:
             if isinstance(m, dict):
