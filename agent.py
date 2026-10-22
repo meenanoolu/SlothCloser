@@ -1,11 +1,13 @@
 """
 Core agent logic for SlothCloser.
-- Tries local Ollama first (best experience)
+- Tries local Ollama + open-weight model first (best experience)
 - Falls back to a high-quality offline response if Ollama is unavailable
-  (so the public Render demo always works)
+  (so the public Render demo always works and never crashes)
 """
 
 import re
+from typing import Optional
+
 import ollama
 from config import DEFAULT_MODEL, TEMPERATURE
 from prompts import SYSTEM_PROMPT, SUMMARY_PROMPT, TASKS_PROMPT, BEDTIME_PROMPT
@@ -14,8 +16,9 @@ from prompts import SYSTEM_PROMPT, SUMMARY_PROMPT, TASKS_PROMPT, BEDTIME_PROMPT
 class SlothAgent:
     def __init__(self, model: str = DEFAULT_MODEL):
         self.model = model
+        self.used_fallback = False  # track for UI feedback
 
-    def _chat(self, prompt: str, max_tokens: int = 200):
+    def _chat(self, prompt: str, max_tokens: int = 200) -> Optional[str]:
         """Try to talk to the local model. Returns None on failure."""
         try:
             response = ollama.chat(
@@ -34,7 +37,6 @@ class SlothAgent:
             return None
 
     def _fallback_summary(self, notes: str) -> str:
-        """Gentle rule-based summary when no model is available."""
         lines = [l.strip() for l in notes.strip().split("\n") if l.strip()]
         if not lines:
             return "A quiet day. Nothing much needed to be written down."
@@ -50,7 +52,6 @@ class SlothAgent:
         )
 
     def _fallback_open_loops(self, notes: str) -> str:
-        """Extract possible remaining tasks with simple heuristics."""
         text = notes.lower()
         candidates = []
 
@@ -66,13 +67,11 @@ class SlothAgent:
                     candidates.append(item)
 
         if candidates:
-            bullets = "\n".join(f"• {c}" for c in candidates[:4])
-            return bullets
+            return "\n".join(f"• {c}" for c in candidates[:4])
 
         return "Nothing clearly left open. The day looks complete."
 
     def _fallback_bedtime(self, notes: str) -> str:
-        """Warm offline bedtime reflection."""
         return (
             "The day is finished, even if a few threads remain. "
             "You showed up, did what you could, and that is enough. "
@@ -84,31 +83,48 @@ class SlothAgent:
     def summarize_day(self, notes: str) -> str:
         prompt = SUMMARY_PROMPT.format(notes=notes.strip())
         result = self._chat(prompt, max_tokens=180)
-        return result if result else self._fallback_summary(notes)
+        if result is None:
+            self.used_fallback = True
+            return self._fallback_summary(notes)
+        return result
 
     def extract_open_loops(self, notes: str) -> str:
         prompt = TASKS_PROMPT.format(notes=notes.strip())
         result = self._chat(prompt, max_tokens=150)
-        return result if result else self._fallback_open_loops(notes)
+        if result is None:
+            self.used_fallback = True
+            return self._fallback_open_loops(notes)
+        return result
 
     def write_bedtime(self, notes: str) -> str:
         prompt = BEDTIME_PROMPT.format(notes=notes.strip())
         result = self._chat(prompt, max_tokens=220)
-        return result if result else self._fallback_bedtime(notes)
+        if result is None:
+            self.used_fallback = True
+            return self._fallback_bedtime(notes)
+        return result
 
     def close_day(self, notes: str) -> dict:
         """Run the full closing ritual."""
+        self.used_fallback = False
+
         if not notes or not notes.strip():
             return {
                 "summary": "No notes provided.",
                 "open_loops": "Nothing to close.",
                 "bedtime": "Rest well. Tomorrow will wait for you.",
+                "used_fallback": False,
             }
 
+        summary = self.summarize_day(notes)
+        open_loops = self.extract_open_loops(notes)
+        bedtime = self.write_bedtime(notes)
+
         return {
-            "summary": self.summarize_day(notes),
-            "open_loops": self.extract_open_loops(notes),
-            "bedtime": self.write_bedtime(notes),
+            "summary": summary,
+            "open_loops": open_loops,
+            "bedtime": bedtime,
+            "used_fallback": self.used_fallback,
         }
 
 
@@ -116,11 +132,7 @@ def list_available_models() -> list:
     """Return models currently available in Ollama (works across library versions)."""
     try:
         result = ollama.list()
-        models = []
-        if isinstance(result, dict):
-            models = result.get("models", [])
-        else:
-            models = getattr(result, "models", []) or []
+        models = result.get("models", []) if isinstance(result, dict) else getattr(result, "models", []) or []
 
         names = []
         for m in models:
