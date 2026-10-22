@@ -49,6 +49,7 @@ It rewards laziness: the AI does the closing work so you don’t have to.
 - Session history + example loader
 - Download the closing as markdown
 - Calm dark UI
+- Deployable as Render Blueprint (same style as production apps)
 
 ---
 
@@ -67,6 +68,35 @@ source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 streamlit run app.py
 ```
+
+---
+
+## Deploy on Render (Blueprint – same as firststep)
+
+This repo contains `render.yaml` + `Dockerfile`.
+
+1. Go to [Render Dashboard](https://dashboard.render.com)
+2. **New** → **Blueprint**
+3. Connect the `meenanoolu/SlothCloser` repository
+4. Render will read `render.yaml` and create the service automatically
+5. After the first deploy you get a public URL
+
+Every push to `main` will auto-deploy.
+
+---
+
+## Tech Stack
+
+- Streamlit (custom calm theme)
+- Ollama + open-weight models
+- Python
+- Docker + Render Blueprint
+
+---
+
+## License
+
+MIT
 
 ---
 
