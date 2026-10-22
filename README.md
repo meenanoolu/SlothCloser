@@ -2,32 +2,51 @@
 
 **A calm, local evening wind-down agent** that helps you close the day - slowly, kindly, and completely offline.
 
-Built for the **Hacktoberfest Open-Source AI Challenge: Week 3 - Slow and Steady**.
+> Built for the **Hacktoberfest Open-Source AI Challenge: Week 3 - Slow and Steady**
 
 ---
 
-## Why this exists
+## The Problem
 
 Most of us end the day with mental clutter still open.  
-SlothCloser reads whatever you dump (notes, journal, messy thoughts) and gently gives you:
+Unfinished thoughts keep looping. Tasks float in the background. It becomes hard to properly rest.
 
-1. A short, human day summary  
-2. The few things still open  
-3. A soft bedtime reflection  
+## The Solution
 
-Everything runs **locally** with open-weight models. Your private thoughts never leave your machine.
+SlothCloser reads whatever you dump (messy notes, journal entries, random thoughts) and gently gives you:
+
+1. **A short, human day summary**
+2. **The few things still open** (so your brain can stop looping)
+3. **A soft bedtime reflection** so you can actually put the day down
+
+It rewards laziness: the AI does the emotional + organizational closing work for you.
+
+---
+
+## Why Open-Source AI Matters Here
+
+| Benefit | Why it matters |
+|---------|----------------|
+| **Fully local** | Your private evening thoughts never leave your machine |
+| **Works offline** | No internet required after the model is downloaded |
+| **Zero ongoing cost** | Set it up once, use it forever |
+| **Swappable models** | Use Gemma, Llama, Qwen, Phi… whatever you prefer |
+| **No surveillance** | A closed API could never offer the same privacy |
+
+This is the kind of tool that only makes sense with open-weight models.
 
 ---
 
 ## Features
 
 - 100% offline once the model is downloaded
-- Works with any Ollama model (Gemma, Llama 3.2, Qwen, Phi, etc.)
+- Works with any Ollama model (Gemma recommended)
 - Beautiful calm dark UI
 - Paste notes or upload a `.md` / `.txt` file
 - One-click “Close my day”
+- Graceful offline fallback (so public demos never break)
 - Download the closing as markdown
-- Zero telemetry, zero cost after setup
+- Zero telemetry
 
 ---
 
@@ -35,81 +54,73 @@ Everything runs **locally** with open-weight models. Your private thoughts never
 
 ### 1. Install Ollama
 ```bash
-# macOS / Linux
 curl -fsSL https://ollama.com/install.sh | sh
-
-# or download from https://ollama.com
 ```
 
-### 2. Pull a model (pick one)
+### 2. Pull a model
 ```bash
-ollama pull gemma2:2b          # fast & good
-# or
-ollama pull llama3.2:3b
-# or
-ollama pull qwen2.5:3b
+ollama pull gemma2:2b
+# or llama3.2:3b / qwen2.5:3b etc.
 ```
 
 ### 3. Run SlothCloser
 ```bash
-# clone or download this folder
+git clone https://github.com/YOUR_USERNAME/sloth-closer.git
 cd sloth-closer
 
 python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
 
 pip install -r requirements.txt
-
 streamlit run app.py
 ```
 
-Open the URL that appears (usually http://localhost:8501).
+Open the URL shown (usually http://localhost:8501).
 
 ---
 
-## How to use
+## Tech Stack
 
-1. Write or paste today’s notes (messy is fine)
-2. (Optional) choose a different local model in the sidebar
-3. Click **Close my day**
-4. Read the three gentle cards
-5. Download the closing if you want to keep it
-
-That’s it. No accounts, no internet, no pressure.
+- **Frontend**: Streamlit (calm custom dark theme)
+- **AI**: Ollama + open-weight models (Gemma by default)
+- **Language**: Python
+- **Deployment**: Works on Render (with graceful fallback)
 
 ---
 
-## Project structure
+## Project Structure
 
 ```
 sloth-closer/
 ├── app.py            # Streamlit UI
-├── agent.py          # Ollama agent logic
-├── prompts.py        # All prompts (easy to edit)
+├── agent.py          # Ollama agent + offline fallback
+├── prompts.py        # All prompts (easy to edit tone)
 ├── config.py         # Settings
+├── Procfile          # For Render deployment
 ├── requirements.txt
 └── README.md
 ```
 
 ---
 
-## Why open-source AI matters here
+## Deploy on Render
 
-- Your journal stays on your laptop
-- Works on a plane or in the countryside
-- You can swap models, change the tone, or fine-tune later
-- Costs nothing after the first download
-- No one is training on your private evening thoughts
+1. Push this repo to GitHub
+2. Create a new **Web Service** on [Render](https://render.com)
+3. Use these settings:
 
-A closed API could never offer the same privacy or permanence.
+| Setting         | Value                                                                 |
+|-----------------|-----------------------------------------------------------------------|
+| Build Command   | `pip install -r requirements.txt`                                     |
+| Start Command   | `streamlit run app.py --server.port $PORT --server.address 0.0.0.0`   |
+
+The public demo will automatically use the calm offline fallback if Ollama is not available on the server.
 
 ---
 
-## Customization
+## License
 
-- Change the default model in `config.py`
-- Edit the tone and length of responses in `prompts.py`
-- Add more tools later (auto-archive daily notes, calendar export, etc.)
+MIT
 
 ---
 
