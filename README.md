@@ -1,8 +1,8 @@
 # 🦥 SlothCloser
 
-**A calm, local evening wind-down agent** that helps you close the day — slowly, kindly, and completely offline.
+**A calm, local evening wind-down agent** that helps you close the day - slowly, kindly, and completely offline.
 
-Built for the **Hacktoberfest Open-Source AI Challenge: Week 3 – Slow and Steady**.
+Built for the **Hacktoberfest Open-Source AI Challenge: Week 3 - Slow and Steady**.
 
 ---
 
