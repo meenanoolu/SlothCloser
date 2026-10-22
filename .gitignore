@@ -1,7 +1,14 @@
 .venv/
+venv/
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
 .env
 .DS_Store
 *.log
 .streamlit/secrets.toml
+.idea/
+.vscode/
+*.egg-info/
+dist/
+build/
