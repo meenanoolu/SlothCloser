@@ -1,6 +1,7 @@
 """
 SlothCloser – Local Evening Wind-Down Agent
 A calm, offline companion that helps you close the day.
+Built for Hacktoberfest Open-Source AI Challenge – Slow & Steady.
 """
 
 import streamlit as st
@@ -31,10 +32,9 @@ st.markdown("""
         --surface-2: #232d3b;
         --text: #e8e6e3;
         --text-muted: #a8a29e;
-        --accent: #7c9a82;          /* soft sage */
+        --accent: #7c9a82;
         --accent-dim: #5a7260;
         --border: #2d3748;
-        --success: #8fbc8f;
     }
 
     .stApp {
@@ -50,15 +50,15 @@ st.markdown("""
     }
 
     .main-title {
-        font-size: 2.6rem !important;
+        font-size: 2.5rem !important;
         color: var(--text) !important;
-        margin-bottom: 0.2rem !important;
+        margin-bottom: 0.15rem !important;
     }
 
     .subtitle {
         color: var(--text-muted);
-        font-size: 1.1rem;
-        margin-bottom: 2rem;
+        font-size: 1.05rem;
+        margin-bottom: 1.8rem;
         font-weight: 400;
     }
 
@@ -105,18 +105,18 @@ st.markdown("""
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 16px;
-        padding: 1.5rem 1.75rem;
-        margin-bottom: 1.25rem;
+        padding: 1.4rem 1.6rem;
+        margin-bottom: 1.1rem;
         box-shadow: 0 4px 24px rgba(0,0,0,0.25);
     }
 
     .result-card h3 {
         color: var(--accent) !important;
-        font-size: 1.15rem !important;
-        margin-bottom: 0.75rem !important;
+        font-size: 1.1rem !important;
+        margin-bottom: 0.7rem !important;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.45rem;
     }
 
     .result-card p, .result-card div {
@@ -126,11 +126,32 @@ st.markdown("""
         white-space: pre-wrap;
     }
 
+    .status-badge {
+        display: inline-block;
+        font-size: 0.78rem;
+        padding: 0.25rem 0.7rem;
+        border-radius: 999px;
+        margin-bottom: 1rem;
+        font-weight: 500;
+    }
+
+    .status-local {
+        background: rgba(124, 154, 130, 0.18);
+        color: #a8d5b0;
+        border: 1px solid rgba(124, 154, 130, 0.35);
+    }
+
+    .status-fallback {
+        background: rgba(180, 140, 80, 0.15);
+        color: #e0c080;
+        border: 1px solid rgba(180, 140, 80, 0.3);
+    }
+
     .footer {
         text-align: center;
         color: var(--text-muted);
-        font-size: 0.85rem;
-        margin-top: 3rem;
+        font-size: 0.82rem;
+        margin-top: 2.8rem;
         opacity: 0.7;
     }
 
@@ -149,45 +170,49 @@ st.markdown(f'<h1 class="main-title">{APP_ICON} {APP_TITLE}</h1>', unsafe_allow_
 st.markdown(f'<p class="subtitle">{APP_SUBTITLE}</p>', unsafe_allow_html=True)
 
 # -------------------------------------------------
-# Sidebar / Model selection (collapsed by default)
+# Sidebar – Model selection
 # -------------------------------------------------
 with st.sidebar:
     st.markdown("### Settings")
     available = list_available_models()
     if available:
+        default_index = 0
+        if DEFAULT_MODEL in available:
+            default_index = available.index(DEFAULT_MODEL)
         model = st.selectbox(
             "Local model",
             options=available,
-            index=0 if DEFAULT_MODEL not in available else available.index(DEFAULT_MODEL),
+            index=default_index,
             help="Models currently available in your Ollama instance"
         )
     else:
-        st.warning("No models found. Make sure Ollama is running.")
-        model = st.text_input("Model name", value=DEFAULT_MODEL)
+        st.info("No local models detected. The app will use a calm offline fallback.")
+        model = st.text_input("Model name (optional)", value=DEFAULT_MODEL)
+
     st.markdown("---")
-    st.markdown("**Tip:** Run `ollama pull gemma2:2b` or any open model you like.")
+    st.markdown("**Tip:** Run `ollama pull gemma2:2b` for the best local experience.")
+    st.markdown("This project works fully offline once the model is downloaded.")
 
 # -------------------------------------------------
-# Main input area
+# Main input
 # -------------------------------------------------
 st.markdown("#### What happened today?")
 notes = st.text_area(
     label="notes",
-    height=220,
+    height=210,
     placeholder="Paste your daily notes, journal entry, or just dump whatever is on your mind...\n\nExample:\n- Finished the API design\n- Still need to reply to Sarah\n- Felt a bit drained after the meeting\n- Bought groceries",
     label_visibility="collapsed",
 )
 
-# Optional file upload
 uploaded = st.file_uploader("Or load a markdown / text file", type=["md", "txt", "markdown"])
 if uploaded is not None:
     notes = uploaded.read().decode("utf-8")
-    st.success(f"Loaded {uploaded.name}")
+    st.success(f"Loaded `{uploaded.name}`")
 
 # -------------------------------------------------
-# Action button
+# Action
 # -------------------------------------------------
-col1, col2, col3 = st.columns([1, 2, 1])
+col1, col2, col3 = st.columns([1, 2.2, 1])
 with col2:
     close_btn = st.button("🦥 Close my day", use_container_width=True)
 
@@ -205,7 +230,19 @@ if close_btn:
         st.markdown("---")
         st.markdown("### Your day, closed")
 
-        # Summary card
+        # Status badge
+        if result.get("used_fallback"):
+            st.markdown(
+                '<div class="status-badge status-fallback">Using calm offline fallback (Ollama not available)</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                f'<div class="status-badge status-local">Powered by local open-weight model · {model}</div>',
+                unsafe_allow_html=True,
+            )
+
+        # Cards
         st.markdown(f"""
         <div class="result-card">
             <h3>🌿 Day summary</h3>
@@ -213,7 +250,6 @@ if close_btn:
         </div>
         """, unsafe_allow_html=True)
 
-        # Open loops card
         st.markdown(f"""
         <div class="result-card">
             <h3>📋 Still open</h3>
@@ -221,7 +257,6 @@ if close_btn:
         </div>
         """, unsafe_allow_html=True)
 
-        # Bedtime card
         st.markdown(f"""
         <div class="result-card">
             <h3>🌙 Bedtime reflection</h3>
@@ -229,8 +264,8 @@ if close_btn:
         </div>
         """, unsafe_allow_html=True)
 
-        # Download buttons
-        full_text = f"""# Day Closed – {Path.cwd().name}
+        # Download
+        full_text = f"""# Day Closed
 
 ## Summary
 {result["summary"]}
@@ -254,6 +289,6 @@ if close_btn:
 # -------------------------------------------------
 st.markdown("""
 <div class="footer">
-    Built for Hacktoberfest · Runs 100% offline with open-weight models · Take it slow
+    Built for Hacktoberfest · Runs offline with open-weight models · Take it slow
 </div>
 """, unsafe_allow_html=True)
