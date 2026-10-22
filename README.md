@@ -45,11 +45,12 @@ It rewards laziness: the AI does the closing work so you don’t have to.
 - Optional mood that gently shapes the reflection
 - One tiny thing for tomorrow
 - Ambient soundscape prompt
+- Clear “Day closed — you can stop carrying it” payoff
 - Graceful offline fallback (public demo never breaks)
 - Session history + example loader
 - Download the closing as markdown
-- Calm dark UI
-- Deployable as Render Blueprint (same style as production apps)
+- Distinctive calm dark UI
+- Deployable as Render Blueprint (same style as firststep)
 
 ---
 
@@ -91,12 +92,6 @@ Every push to `main` will auto-deploy.
 - Ollama + open-weight models
 - Python
 - Docker + Render Blueprint
-
----
-
-## License
-
-MIT
 
 ---
 
