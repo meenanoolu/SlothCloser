@@ -1,27 +1,21 @@
 """
-Core agent logic for SlothCloser.
-- Tries local Ollama + open-weight model first (Gemma preferred)
-- Falls back to high-quality offline responses if Ollama is unavailable
-- Supports mood, "one tiny thing for tomorrow", and ambient prompt
-- Designed so private evening thoughts never leave the machine
+Core agent for SlothCloser.
+- One structured Ollama call (fast) instead of five sequential calls
+- High-quality offline fallbacks when no model is available
+- Local JSON history (MongoDB Atlas–ready document shape)
 """
 
 from __future__ import annotations
 
+import json
 import re
+import uuid
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
-from config import DEFAULT_MODEL, TEMPERATURE
-from prompts import (
-    SYSTEM_PROMPT,
-    SUMMARY_PROMPT,
-    TASKS_PROMPT,
-    BEDTIME_PROMPT,
-    TOMORROW_PROMPT,
-    AMBIENT_PROMPT,
-    MOOD_INSTRUCTIONS,
-)
+from config import DEFAULT_MODEL, TEMPERATURE, HISTORY_DIR
+from prompts import SYSTEM_PROMPT, CLOSE_DAY_PROMPT, MOOD_INSTRUCTIONS
 
 try:
     import ollama
@@ -35,8 +29,7 @@ class SlothAgent:
         self.model = model
         self.used_fallback = False
 
-    def _chat(self, prompt: str, max_tokens: int = 160) -> Optional[str]:
-        """Try local model. Returns None on any failure."""
+    def _chat(self, prompt: str, max_tokens: int = 420) -> Optional[str]:
         if not OLLAMA_AVAILABLE:
             return None
         try:
@@ -51,133 +44,144 @@ class SlothAgent:
                     "num_predict": max_tokens,
                 },
             )
-            content = response["message"]["content"].strip()
-            # Light cleanup of common model artifacts
-            content = re.sub(r"^(Day summary|Remaining open loops|Bedtime reflection|One tiny thing for tomorrow|Ambient soundscape prompt)[:\s]*", "", content, flags=re.I)
-            return content
+            return response["message"]["content"].strip()
         except Exception:
             return None
 
-    # ---------- Fallbacks (instant, high quality) ----------
-    def _fallback_summary(self, notes: str) -> str:
+    # ---------- Offline fallbacks (instant) ----------
+    def _fallback(self, notes: str, mood: str) -> dict:
         lines = [l.strip() for l in notes.strip().split("\n") if l.strip()]
-        if not lines:
-            return "A quiet day. Nothing much needed to be written down."
-        preview = " ".join(lines[:2])
-        if len(preview) > 120:
-            preview = preview[:117] + "..."
-        return (
+        preview = " ".join(lines[:2]) if lines else ""
+        if len(preview) > 110:
+            preview = preview[:107] + "..."
+
+        summary = (
             f"Today moved at its own pace. You noted: {preview} "
             f"It feels like a day that preferred patience over speed."
+            if preview
+            else "A quiet day. Nothing much needed to be written down."
         )
 
-    def _fallback_open_loops(self, notes: str) -> str:
+        # Simple open-loop extraction
         text = notes.lower()
         candidates = []
-        patterns = [
+        for pattern in [
             r"(still need to|need to|have to|should|must|todo|to-do|remember to)\s+([^.!\n]+)",
             r"(reply to|email|message|call|finish|complete|send|write)\s+([^.!\n]+)",
-        ]
-        for pattern in patterns:
-            for match in re.finditer(pattern, text):
-                item = match.group(0).strip().capitalize()
+        ]:
+            for m in re.finditer(pattern, text):
+                item = m.group(0).strip().capitalize()
                 if len(item) > 8 and item not in candidates:
                     candidates.append(item)
-        if candidates:
-            return "\n".join(f"• {c}" for c in candidates[:3])
-        return "Nothing open. The day is complete."
+        open_loops = (
+            "\n".join(f"• {c}" for c in candidates[:3])
+            if candidates
+            else "Nothing open. The day is complete."
+        )
 
-    def _fallback_bedtime(self, mood: str = "neutral") -> str:
-        if mood == "tired":
-            return (
+        bedtime_map = {
+            "tired": (
                 "You are tired, and that is information worth listening to. "
                 "The day does not need any more effort from you tonight. "
                 "Whatever is unfinished can wait in the quiet. "
                 "Rest is not a reward — it is part of the work. Sleep well."
-            )
-        if mood == "heavy":
-            return (
+            ),
+            "heavy": (
                 "Some days feel heavier than others. This seems to be one of them. "
                 "You do not have to solve anything right now. "
                 "The weight can sit beside you without being fixed. "
                 "Morning will come regardless. For now, just set it down."
-            )
-        if mood == "light":
-            return (
+            ),
+            "light": (
                 "There is a quiet ease in the way this day ends. "
                 "Nothing dramatic, just a soft landing. "
                 "Hold on to that lightness for a moment. Rest easy."
-            )
-        if mood == "grateful":
-            return (
+            ),
+            "grateful": (
                 "Gratitude does not have to be loud. "
                 "Even a small, quiet thank-you is enough. "
                 "Whatever good found its way to you today can stay with you into the night."
-            )
-        return (
+            ),
+        }
+        bedtime = bedtime_map.get(
+            mood,
             "The day is finished, even if a few threads remain. "
             "You showed up, did what you could, and that is enough. "
-            "Let the remaining pieces wait until morning. Sleep well."
+            "Let the remaining pieces wait until morning. Sleep well.",
         )
 
-    def _fallback_tomorrow(self) -> str:
-        return "Nothing urgent. Let tomorrow arrive gently."
+        ambient_map = {
+            "tired": "Soft rain on a quiet window, distant thunder very far away, a single candle flame.",
+            "heavy": "Low wind through pine trees at night, occasional creak of wood, deep steady breathing.",
+            "light": "Early morning birds far off, a slow stream over smooth stones, warm light through curtains.",
+            "grateful": "Gentle evening breeze through open windows, soft leaves, a distant soft laugh.",
+        }
+        ambient = ambient_map.get(
+            mood, "Quiet room at night, distant rain, the low hum of a house settling into sleep."
+        )
 
-    def _fallback_ambient(self, mood: str = "neutral") -> str:
-        if mood == "tired":
-            return "Soft rain on a quiet window, distant thunder very far away, a single candle flame."
-        if mood == "heavy":
-            return "Low wind through pine trees at night, occasional creak of wood, deep steady breathing."
-        if mood == "light":
-            return "Early morning birds far off, a slow stream over smooth stones, warm light through curtains."
-        if mood == "grateful":
-            return "Gentle evening breeze through open windows, soft leaves, a distant soft laugh."
-        return "Quiet room at night, distant rain, the low hum of a house settling into sleep."
+        return {
+            "summary": summary,
+            "open_loops": open_loops,
+            "bedtime": bedtime,
+            "tomorrow": "Nothing urgent. Let tomorrow arrive gently.",
+            "ambient": ambient,
+        }
 
-    # ---------- Main methods ----------
-    def summarize_day(self, notes: str) -> str:
-        result = self._chat(SUMMARY_PROMPT.format(notes=notes.strip()), max_tokens=140)
-        if result is None:
-            self.used_fallback = True
-            return self._fallback_summary(notes)
-        return result
+    def _parse_structured(self, raw: str) -> Optional[dict]:
+        """Parse the single structured response into sections."""
+        try:
+            sections = {}
+            current = None
+            buf = []
+            for line in raw.splitlines():
+                upper = line.strip().upper()
+                if upper.startswith("SUMMARY:"):
+                    if current and buf:
+                        sections[current] = "\n".join(buf).strip()
+                    current = "summary"
+                    rest = line.split(":", 1)[-1].strip()
+                    buf = [rest] if rest else []
+                elif upper.startswith("OPEN:"):
+                    if current and buf:
+                        sections[current] = "\n".join(buf).strip()
+                    current = "open_loops"
+                    rest = line.split(":", 1)[-1].strip()
+                    buf = [rest] if rest else []
+                elif upper.startswith("BEDTIME:"):
+                    if current and buf:
+                        sections[current] = "\n".join(buf).strip()
+                    current = "bedtime"
+                    rest = line.split(":", 1)[-1].strip()
+                    buf = [rest] if rest else []
+                elif upper.startswith("TOMORROW:"):
+                    if current and buf:
+                        sections[current] = "\n".join(buf).strip()
+                    current = "tomorrow"
+                    rest = line.split(":", 1)[-1].strip()
+                    buf = [rest] if rest else []
+                elif upper.startswith("AMBIENT:"):
+                    if current and buf:
+                        sections[current] = "\n".join(buf).strip()
+                    current = "ambient"
+                    rest = line.split(":", 1)[-1].strip()
+                    buf = [rest] if rest else []
+                else:
+                    if current is not None:
+                        buf.append(line)
+            if current and buf:
+                sections[current] = "\n".join(buf).strip()
 
-    def extract_open_loops(self, notes: str) -> str:
-        result = self._chat(TASKS_PROMPT.format(notes=notes.strip()), max_tokens=120)
-        if result is None:
-            self.used_fallback = True
-            return self._fallback_open_loops(notes)
-        return result
-
-    def write_bedtime(self, notes: str, mood: str = "neutral") -> str:
-        mood_instruction = MOOD_INSTRUCTIONS.get(mood, "")
-        if mood_instruction:
-            mood_instruction = f"\n- {mood_instruction}"
-        prompt = BEDTIME_PROMPT.format(notes=notes.strip(), mood_instruction=mood_instruction)
-        result = self._chat(prompt, max_tokens=180)
-        if result is None:
-            self.used_fallback = True
-            return self._fallback_bedtime(mood)
-        return result
-
-    def one_tiny_thing(self, notes: str) -> str:
-        result = self._chat(TOMORROW_PROMPT.format(notes=notes.strip()), max_tokens=60)
-        if result is None:
-            self.used_fallback = True
-            return self._fallback_tomorrow()
-        return result
-
-    def ambient_prompt(self, notes: str, mood: str = "neutral") -> str:
-        result = self._chat(AMBIENT_PROMPT.format(notes=notes.strip()), max_tokens=50)
-        if result is None:
-            self.used_fallback = True
-            return self._fallback_ambient(mood)
-        return result
+            required = ["summary", "open_loops", "bedtime", "tomorrow", "ambient"]
+            if all(k in sections and sections[k] for k in required):
+                return sections
+        except Exception:
+            pass
+        return None
 
     def close_day(self, notes: str, mood: str = "neutral") -> dict:
-        """Full closing ritual – returns everything needed by the UI."""
-        self.used_fallback = False
         ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+        self.used_fallback = False
 
         if not notes or not notes.strip():
             return {
@@ -191,20 +195,32 @@ class SlothAgent:
                 "mood": mood,
             }
 
-        # Sequential with tight token limits for speed on small models
-        summary = self.summarize_day(notes)
-        open_loops = self.extract_open_loops(notes)
-        bedtime = self.write_bedtime(notes, mood=mood)
-        tomorrow = self.one_tiny_thing(notes)
-        ambient = self.ambient_prompt(notes, mood=mood)
+        mood_instruction = MOOD_INSTRUCTIONS.get(mood, "")
+        if mood_instruction:
+            mood_instruction = f"\nMood note: {mood_instruction}"
 
+        prompt = CLOSE_DAY_PROMPT.format(
+            notes=notes.strip(),
+            mood_instruction=mood_instruction,
+        )
+
+        raw = self._chat(prompt, max_tokens=420)
+        if raw:
+            parsed = self._parse_structured(raw)
+            if parsed:
+                return {
+                    **parsed,
+                    "used_fallback": False,
+                    "timestamp": ts,
+                    "mood": mood,
+                }
+
+        # Fallback path
+        self.used_fallback = True
+        fb = self._fallback(notes, mood)
         return {
-            "summary": summary,
-            "open_loops": open_loops,
-            "bedtime": bedtime,
-            "tomorrow": tomorrow,
-            "ambient": ambient,
-            "used_fallback": self.used_fallback,
+            **fb,
+            "used_fallback": True,
             "timestamp": ts,
             "mood": mood,
         }
@@ -231,3 +247,40 @@ def list_available_models() -> list:
         return names
     except Exception:
         return []
+
+
+# ---------- Local history (MongoDB Atlas–ready document shape) ----------
+def save_closing(result: dict, notes: str) -> Path:
+    """Persist a closing as a JSON document. Shape is ready for Atlas."""
+    HISTORY_DIR.mkdir(exist_ok=True)
+    doc = {
+        "_id": str(uuid.uuid4()),
+        "timestamp": result["timestamp"],
+        "mood": result.get("mood", "neutral"),
+        "notes": notes,
+        "summary": result.get("summary", ""),
+        "open_loops": result.get("open_loops", ""),
+        "bedtime": result.get("bedtime", ""),
+        "tomorrow": result.get("tomorrow", ""),
+        "ambient": result.get("ambient", ""),
+        "used_fallback": result.get("used_fallback", False),
+        "created_at": datetime.utcnow().isoformat() + "Z",
+    }
+    safe_ts = result["timestamp"].replace(" ", "_").replace(":", "")
+    path = HISTORY_DIR / f"closing_{safe_ts}_{doc['_id'][:8]}.json"
+    path.write_text(json.dumps(doc, indent=2, ensure_ascii=False), encoding="utf-8")
+    return path
+
+
+def load_recent_closings(limit: int = 12) -> list:
+    """Load recent local closings (newest first)."""
+    if not HISTORY_DIR.exists():
+        return []
+    files = sorted(HISTORY_DIR.glob("closing_*.json"), reverse=True)
+    out = []
+    for f in files[:limit]:
+        try:
+            out.append(json.loads(f.read_text(encoding="utf-8")))
+        except Exception:
+            continue
+    return out
