@@ -48,102 +48,145 @@ st.markdown("""
     --accent-dim: #6f8f6f;
     --border: #252d3a;
     --glow: rgba(156, 191, 156, 0.12);
+    --glow-strong: rgba(156, 191, 156, 0.22);
 }
 
 html, body, .stApp {
-    background: radial-gradient(ellipse 120% 80% at 50% -20%, #152018 0%, #0b0f14 55%) !important;
+    background: radial-gradient(ellipse 130% 90% at 50% -25%, #152018 0%, #0b0f14 60%) !important;
     color: var(--text);
     font-family: 'Inter', system-ui, sans-serif;
 }
 
 .block-container {
     max-width: 680px;
-    padding-top: 1.6rem;
-    padding-bottom: 3rem;
+    padding-top: 1.4rem;
+    padding-bottom: 3.5rem;
 }
 
 /* Hide Streamlit chrome */
 #MainMenu, footer, header, .stDeployButton {display: none !important; visibility: hidden;}
 
-/* Hero */
+/* ---------- Motion keyframes ---------- */
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes softPulse {
+    0%, 100% { opacity: 0.85; transform: scale(1); }
+    50%      { opacity: 1; transform: scale(1.04); }
+}
+@keyframes gentleGlow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(156, 191, 156, 0); }
+    50%      { box-shadow: 0 0 28px 4px rgba(156, 191, 156, 0.18); }
+}
+@keyframes breathe {
+    0%, 100% { filter: drop-shadow(0 4px 12px rgba(156, 191, 156, 0.22)); }
+    50%      { filter: drop-shadow(0 6px 22px rgba(156, 191, 156, 0.38)); }
+}
+@keyframes cardReveal {
+    from { opacity: 0; transform: translateY(22px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes payoffReveal {
+    from { opacity: 0; transform: translateY(16px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+/* ---------- Hero ---------- */
 .hero {
     text-align: center;
-    margin-bottom: 1.8rem;
+    margin-bottom: 2rem;
+    animation: fadeUp 0.7s ease-out both;
 }
 .hero-emoji {
-    font-size: 3.2rem;
+    font-size: 3.4rem;
     line-height: 1;
-    margin-bottom: 0.5rem;
-    filter: drop-shadow(0 4px 14px rgba(156, 191, 156, 0.28));
+    margin-bottom: 0.55rem;
+    display: inline-block;
+    animation: breathe 4.5s ease-in-out infinite;
 }
 .hero-title {
     font-family: 'Cormorant Garamond', Georgia, serif !important;
-    font-size: 2.9rem !important;
+    font-size: 3rem !important;
     font-weight: 600 !important;
     letter-spacing: -0.03em;
     color: var(--text) !important;
-    margin: 0 0 0.25rem 0 !important;
+    margin: 0 0 0.3rem 0 !important;
+    animation: fadeUp 0.75s ease-out 0.08s both;
 }
 .hero-sub {
     font-family: 'Inter', sans-serif;
-    font-size: 1.02rem;
+    font-size: 1.05rem;
     color: var(--text-muted);
     font-weight: 400;
     letter-spacing: 0.01em;
-    max-width: 420px;
+    max-width: 440px;
     margin: 0 auto;
-    line-height: 1.5;
+    line-height: 1.55;
+    animation: fadeUp 0.8s ease-out 0.16s both;
 }
 
-/* Section labels */
+/* ---------- Section labels ---------- */
 .section-label {
     font-family: 'Inter', sans-serif;
-    font-size: 0.76rem;
+    font-size: 0.74rem;
     font-weight: 600;
-    letter-spacing: 0.09em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--text-muted);
-    margin: 1.4rem 0 0.55rem 0;
+    margin: 1.55rem 0 0.6rem 0;
+    animation: fadeIn 0.5s ease-out both;
 }
 
-/* Text area */
+/* ---------- Text area ---------- */
 .stTextArea textarea {
     background: var(--surface) !important;
     color: var(--text) !important;
     border: 1px solid var(--border) !important;
     border-radius: 16px !important;
-    font-size: 1.02rem !important;
+    font-size: 1.03rem !important;
     line-height: 1.7 !important;
-    padding: 1.15rem 1.25rem !important;
-    min-height: 155px !important;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+    padding: 1.2rem 1.3rem !important;
+    min-height: 160px !important;
+    transition: border-color 0.25s ease, box-shadow 0.3s ease, background 0.25s ease !important;
 }
 .stTextArea textarea:focus {
     border-color: var(--accent) !important;
-    box-shadow: 0 0 0 3px var(--glow) !important;
+    box-shadow: 0 0 0 3px var(--glow), 0 8px 32px rgba(0,0,0,0.25) !important;
+    background: var(--surface-2) !important;
 }
 
-/* Buttons */
+/* ---------- Buttons ---------- */
 .stButton > button {
     border-radius: 14px !important;
     font-weight: 600 !important;
     font-size: 1.02rem !important;
-    padding: 0.78rem 1.5rem !important;
+    padding: 0.8rem 1.5rem !important;
     border: none !important;
-    transition: all 0.2s ease !important;
+    transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1) !important;
+    position: relative;
+    overflow: hidden;
 }
-
-/* Primary close button */
 button[kind="primary"] {
     background: linear-gradient(135deg, #9cbf9c, #6f8f6f) !important;
     color: #0b0f14 !important;
+    box-shadow: 0 4px 18px rgba(156, 191, 156, 0.25) !important;
 }
 button[kind="primary"]:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 8px 28px rgba(156, 191, 156, 0.35) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 10px 32px rgba(156, 191, 156, 0.4) !important;
 }
-
-/* Secondary buttons */
+button[kind="primary"]:active {
+    transform: translateY(0) !important;
+}
 div[data-testid="stHorizontalBlock"] button {
     background: var(--surface) !important;
     color: var(--text-muted) !important;
@@ -155,85 +198,109 @@ div[data-testid="stHorizontalBlock"] button:hover {
     border-color: var(--accent) !important;
     color: var(--accent) !important;
     background: var(--surface-2) !important;
+    transform: translateY(-1px);
 }
 
-/* Radio mood */
+/* ---------- Mood radio ---------- */
 .stRadio > label {display: none;}
 .stRadio div[role="radiogroup"] {
-    gap: 0.5rem;
+    gap: 0.55rem;
     flex-wrap: wrap;
 }
 .stRadio div[role="radiogroup"] label {
     background: var(--surface) !important;
     border: 1px solid var(--border) !important;
     border-radius: 999px !important;
-    padding: 0.4rem 0.95rem !important;
+    padding: 0.42rem 1rem !important;
     color: var(--text-muted) !important;
     font-size: 0.88rem !important;
-    transition: all 0.15s ease !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer !important;
 }
 .stRadio div[role="radiogroup"] label:hover {
     border-color: var(--accent) !important;
     color: var(--text) !important;
+    background: var(--surface-2) !important;
+    transform: translateY(-1px);
 }
 
-/* Result cards */
+/* ---------- Result cards ---------- */
 .result-card {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 18px;
-    padding: 1.35rem 1.5rem;
-    margin-bottom: 0.9rem;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+    padding: 1.4rem 1.55rem;
+    margin-bottom: 0.95rem;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.22);
+    animation: cardReveal 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+    transition: border-color 0.25s ease, box-shadow 0.3s ease, transform 0.25s ease;
 }
+.result-card:hover {
+    border-color: rgba(156, 191, 156, 0.35);
+    box-shadow: 0 8px 36px rgba(0,0,0,0.28);
+    transform: translateY(-2px);
+}
+.result-card:nth-child(1) { animation-delay: 0.05s; }
+.result-card:nth-child(2) { animation-delay: 0.12s; }
+.result-card:nth-child(3) { animation-delay: 0.19s; }
+.result-card:nth-child(4) { animation-delay: 0.26s; }
+.result-card:nth-child(5) { animation-delay: 0.33s; }
+
 .result-card .card-label {
     font-family: 'Inter', sans-serif;
-    font-size: 0.74rem;
+    font-size: 0.73rem;
     font-weight: 600;
-    letter-spacing: 0.07em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--accent);
     margin-bottom: 0.55rem;
 }
 .result-card .card-body {
     font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 1.22rem;
+    font-size: 1.24rem;
     line-height: 1.65;
     color: var(--text);
     white-space: pre-wrap;
 }
 
-/* Payoff */
+/* ---------- Payoff ---------- */
 .payoff {
-    background: linear-gradient(145deg, rgba(156, 191, 156, 0.11), rgba(156, 191, 156, 0.03));
-    border: 1px solid rgba(156, 191, 156, 0.28);
+    background: linear-gradient(145deg, rgba(156, 191, 156, 0.13), rgba(156, 191, 156, 0.03));
+    border: 1px solid rgba(156, 191, 156, 0.3);
     border-radius: 18px;
-    padding: 1.7rem 1.5rem;
+    padding: 1.85rem 1.6rem;
     text-align: center;
-    margin: 1.7rem 0 1.3rem 0;
+    margin: 1.8rem 0 1.4rem 0;
+    animation: payoffReveal 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.4s both;
+    transition: box-shadow 0.4s ease;
+}
+.payoff:hover {
+    box-shadow: 0 0 40px rgba(156, 191, 156, 0.15);
 }
 .payoff-title {
     font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 1.65rem;
+    font-size: 1.75rem;
     color: var(--accent);
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.4rem;
+    letter-spacing: -0.01em;
 }
 .payoff-text {
-    font-size: 0.97rem;
+    font-size: 0.98rem;
     color: var(--text-muted);
     line-height: 1.55;
 }
 
-/* Badges */
+/* ---------- Badges ---------- */
 .badge {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
     font-size: 0.75rem;
     font-weight: 500;
-    padding: 0.28rem 0.75rem;
+    padding: 0.3rem 0.8rem;
     border-radius: 999px;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.8rem;
+    animation: fadeIn 0.5s ease-out both;
 }
 .badge-local {
     background: rgba(156, 191, 156, 0.12);
@@ -249,63 +316,80 @@ div[data-testid="stHorizontalBlock"] button:hover {
 .meta {
     font-size: 0.82rem;
     color: var(--text-muted);
-    margin-bottom: 1.1rem;
+    margin-bottom: 1.15rem;
+    animation: fadeIn 0.5s ease-out 0.1s both;
 }
 
-/* Empty state */
+/* ---------- Empty state ---------- */
 .empty {
     text-align: center;
-    padding: 2.4rem 1.5rem;
+    padding: 2.6rem 1.6rem;
     background: var(--surface);
     border: 1px dashed var(--border);
     border-radius: 18px;
-    margin: 1.2rem 0;
+    margin: 1.3rem 0;
+    animation: fadeUp 0.6s ease-out both;
 }
 .empty-icon {
-    font-size: 2.2rem;
-    margin-bottom: 0.65rem;
+    font-size: 2.4rem;
+    margin-bottom: 0.7rem;
     opacity: 0.9;
+    display: inline-block;
+    animation: softPulse 3.5s ease-in-out infinite;
 }
 .empty p {
     color: var(--text-muted);
     font-size: 0.98rem;
-    line-height: 1.6;
-    max-width: 310px;
+    line-height: 1.65;
+    max-width: 320px;
     margin: 0 auto;
 }
 
-/* Footer */
-.footer {
-    text-align: center;
-    margin-top: 2.8rem;
-    padding-top: 1.4rem;
-    border-top: 1px solid var(--border);
-    font-size: 0.78rem;
-    color: var(--text-muted);
-    line-height: 1.7;
-}
-
-/* History chips */
+/* ---------- History ---------- */
 .history-item {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 0.7rem 1rem;
-    margin-bottom: 0.5rem;
+    padding: 0.75rem 1.05rem;
+    margin-bottom: 0.55rem;
     font-size: 0.88rem;
     color: var(--text-muted);
+    transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.history-item:hover {
+    border-color: rgba(156, 191, 156, 0.3);
+    transform: translateX(3px);
 }
 .history-item strong {
     color: var(--text);
 }
 
-/* Select / other Streamlit widgets */
+/* ---------- Footer ---------- */
+.footer {
+    text-align: center;
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    line-height: 1.75;
+    animation: fadeIn 0.8s ease-out 0.3s both;
+}
+
+/* ---------- Selectbox ---------- */
 .stSelectbox > div > div {
     background: var(--surface) !important;
     border-radius: 12px !important;
     border-color: var(--border) !important;
+    transition: border-color 0.2s ease !important;
+}
+
+/* Smooth spinner feel */
+div[data-testid="stSpinner"] > div {
+    border-top-color: var(--accent) !important;
 }
 </style>
+
 """, unsafe_allow_html=True)
 
 # -------------------------------------------------
@@ -447,14 +531,15 @@ if result:
         ("Ambient soundscape", result["ambient"]),
     ]
 
-    for label, content in cards:
+    for i, (label, content) in enumerate(cards):
         safe = (
             content.replace("&", "&amp;")
             .replace("<", "&lt;")
             .replace(">", "&gt;")
         )
+        delay = 0.06 + i * 0.08
         st.markdown(f"""
-        <div class="result-card">
+        <div class="result-card" style="animation-delay: {delay}s">
             <div class="card-label">{label}</div>
             <div class="card-body">{safe}</div>
         </div>
