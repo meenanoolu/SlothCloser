@@ -1,15 +1,17 @@
 """
 Core agent logic for SlothCloser.
-- Tries local Ollama + open-weight model first
+- Tries local Ollama + open-weight model first (Gemma preferred)
 - Falls back to high-quality offline responses if Ollama is unavailable
 - Supports mood, "one tiny thing for tomorrow", and ambient prompt
+- Designed so private evening thoughts never leave the machine
 """
+
+from __future__ import annotations
 
 import re
 from datetime import datetime
 from typing import Optional
 
-import ollama
 from config import DEFAULT_MODEL, TEMPERATURE
 from prompts import (
     SYSTEM_PROMPT,
@@ -21,7 +23,11 @@ from prompts import (
     MOOD_INSTRUCTIONS,
 )
 
-
+try:
+    import ollama
+    OLLAMA_AVAILABLE = True
+except ImportError:
+    OLLAMA_AVAILABLE = False
 
 
 class SlothAgent:
@@ -31,6 +37,8 @@ class SlothAgent:
 
     def _chat(self, prompt: str, max_tokens: int = 160) -> Optional[str]:
         """Try local model. Returns None on any failure."""
+        if not OLLAMA_AVAILABLE:
+            return None
         try:
             response = ollama.chat(
                 model=self.model,
@@ -43,11 +51,14 @@ class SlothAgent:
                     "num_predict": max_tokens,
                 },
             )
-            return response["message"]["content"].strip()
+            content = response["message"]["content"].strip()
+            # Light cleanup of common model artifacts
+            content = re.sub(r"^(Day summary|Remaining open loops|Bedtime reflection|One tiny thing for tomorrow|Ambient soundscape prompt)[:\s]*", "", content, flags=re.I)
+            return content
         except Exception:
             return None
 
-    # ---------- Fallbacks (instant) ----------
+    # ---------- Fallbacks (instant, high quality) ----------
     def _fallback_summary(self, notes: str) -> str:
         lines = [l.strip() for l in notes.strip().split("\n") if l.strip()]
         if not lines:
@@ -74,7 +85,7 @@ class SlothAgent:
                     candidates.append(item)
         if candidates:
             return "\n".join(f"• {c}" for c in candidates[:3])
-        return "Nothing clearly left open. The day looks complete."
+        return "Nothing open. The day is complete."
 
     def _fallback_bedtime(self, mood: str = "neutral") -> str:
         if mood == "tired":
@@ -180,7 +191,7 @@ class SlothAgent:
                 "mood": mood,
             }
 
-        # Sequential but with lower token limits for speed
+        # Sequential with tight token limits for speed on small models
         summary = self.summarize_day(notes)
         open_loops = self.extract_open_loops(notes)
         bedtime = self.write_bedtime(notes, mood=mood)
@@ -200,6 +211,8 @@ class SlothAgent:
 
 
 def list_available_models() -> list:
+    if not OLLAMA_AVAILABLE:
+        return []
     try:
         result = ollama.list()
         models = (
