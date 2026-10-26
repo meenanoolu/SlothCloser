@@ -25,6 +25,17 @@ html, body {
 
 body { overflow-x: hidden; }
 
+/* Parallax layer — moved by JS with the cursor */
+.parallax-layer {
+  position: fixed;
+  inset: -20%;
+  z-index: 0;
+  pointer-events: none;
+  will-change: transform;
+  transition: none;
+}
+
+
 /* Living background */
 .bg {
   position: fixed;
@@ -50,21 +61,21 @@ body { overflow-x: hidden; }
   width: 520px; height: 520px;
   top: 8%; left: 5%;
   background: rgba(163, 201, 163, 0.18);
-  animation: orbA 24s ease-in-out infinite alternate;
+  animation: orbPulseA 10s ease-in-out infinite alternate;
   will-change: transform;
 }
 .orb-b {
   width: 480px; height: 480px;
   bottom: 5%; right: 5%;
   background: rgba(100, 150, 180, 0.14);
-  animation: orbB 28s ease-in-out infinite alternate;
+  animation: orbPulseB 12s ease-in-out infinite alternate;
   will-change: transform;
 }
 .orb-c {
   width: 360px; height: 360px;
   top: 55%; left: 40%;
   background: rgba(180, 140, 90, 0.08);
-  animation: orbB 32s ease-in-out infinite alternate-reverse;
+  animation: orbPulseB 14s ease-in-out infinite alternate-reverse;
   will-change: transform;
 }
 
@@ -73,13 +84,13 @@ body { overflow-x: hidden; }
   50%  { transform: scale(1.05) translate(-1.5%, 1%); filter: hue-rotate(7deg); }
   100% { transform: scale(1.02) translate(1%, -1%); filter: hue-rotate(-5deg); }
 }
-@keyframes orbA {
-  0%   { transform: translate(0,0) scale(1); opacity: 0.7; }
-  100% { transform: translate(8%, -6%) scale(1.15); opacity: 1; }
+@keyframes orbPulseA {
+  0%   { opacity: 0.65; }
+  100% { opacity: 1; }
 }
-@keyframes orbB {
-  0%   { transform: translate(0,0) scale(1); opacity: 0.6; }
-  100% { transform: translate(-6%, 5%) scale(1.12); opacity: 1; }
+@keyframes orbPulseB {
+  0%   { opacity: 0.55; }
+  100% { opacity: 0.95; }
 }
 
 .app {
