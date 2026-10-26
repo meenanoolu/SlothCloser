@@ -6,6 +6,26 @@
   let preferredModel = null;
   let lastResult = null;
 
+  // Cursor parallax on background orbs
+  const orbs = $$(".orb");
+  let targetX = 0, targetY = 0, curX = 0, curY = 0;
+  window.addEventListener("mousemove", (e) => {
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    targetX = (e.clientX - cx) / cx;
+    targetY = (e.clientY - cy) / cy;
+  });
+  function tickParallax() {
+    curX += (targetX - curX) * 0.06;
+    curY += (targetY - curY) * 0.06;
+    orbs.forEach((orb, i) => {
+      const depth = (i + 1) * 12;
+      orb.style.transform = `translate(${curX * depth}px, ${curY * depth}px)`;
+    });
+    requestAnimationFrame(tickParallax);
+  }
+  requestAnimationFrame(tickParallax);
+
   // Nav
   $$(".nav-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -17,7 +37,6 @@
     });
   });
 
-  // Moods
   async function initMoods() {
     const res = await fetch("/api/moods");
     const data = await res.json();
@@ -38,7 +57,6 @@
     });
   }
 
-  // Status
   async function initStatus() {
     const el = $("#status");
     try {
@@ -81,11 +99,13 @@
     box.classList.remove("hidden");
 
     const cards = [
-      ["Day summary", r.summary],
-      ["Still open", r.open_loops],
-      ["Bedtime reflection", r.bedtime],
-      ["One tiny thing for tomorrow", r.tomorrow],
-      ["Ambient soundscape", r.ambient],
+      ["Day summary", r.summary, ""],
+      ["Still open", r.open_loops, ""],
+      ["Bedtime reflection", r.bedtime, ""],
+      ["A few lines for the night", r.poem || "", "card-poem"],
+      ["Hold this", r.quote || "", "card-quote"],
+      ["One tiny thing for tomorrow", r.tomorrow, ""],
+      ["Ambient soundscape", r.ambient, ""],
     ];
 
     let html = "";
@@ -95,9 +115,10 @@
       html += `<div class="badge badge-local" style="margin-bottom:0.8rem">Local open-weight</div>`;
     }
 
-    cards.forEach(([label, body], i) => {
+    cards.forEach(([label, body, cls], i) => {
+      if (!body || !String(body).trim()) return;
       html += `
-        <div class="card" style="animation-delay:${0.05 + i * 0.07}s">
+        <div class="card ${cls}" style="animation-delay:${0.04 + i * 0.06}s">
           <div class="card-label">${label}</div>
           <div class="card-body">${esc(body)}</div>
         </div>`;
@@ -106,7 +127,7 @@
     html += `
       <div class="voice">
         <div class="voice-label">Bedtime voice</div>
-        <button id="btn-voice" class="btn btn-primary" style="width:100%">🎙️ Play bedtime reflection</button>
+        <button id="btn-voice" class="btn btn-primary" style="width:100%">🎙️ Play soft reading</button>
         <div id="voice-player"></div>
       </div>
       <div class="payoff">
@@ -117,7 +138,6 @@
     `;
 
     box.innerHTML = html;
-
     $("#btn-voice").addEventListener("click", playVoice);
     $("#btn-save").addEventListener("click", () => {
       const md = `# Day Closed — ${r.timestamp}
@@ -131,6 +151,12 @@ ${r.open_loops}
 
 ## Bedtime reflection
 ${r.bedtime}
+
+## Poem
+${r.poem || ""}
+
+## Quote
+${r.quote || ""}
 
 ## One tiny thing for tomorrow
 ${r.tomorrow}
@@ -146,6 +172,15 @@ ${r.ambient}
     });
   }
 
+  function voiceScript(r) {
+    // Warm spoken package: reflection + pause + poem + quote
+    const parts = [r.bedtime];
+    if (r.poem) parts.push(r.poem.replace(/\n/g, ". "));
+    if (r.quote) parts.push(r.quote);
+    parts.push("Day closed. You can stop carrying it now.");
+    return parts.filter(Boolean).join("\n\n");
+  }
+
   async function playVoice() {
     if (!lastResult) return;
     const btn = $("#btn-voice");
@@ -156,18 +191,18 @@ ${r.ambient}
       const res = await fetch("/api/voice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: lastResult.bedtime }),
+        body: JSON.stringify({ text: voiceScript(lastResult) }),
       });
       if (!res.ok) throw new Error("voice failed");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const player = $("#voice-player");
       player.innerHTML = `<audio controls autoplay src="${url}"></audio>
-        <p style="font-size:0.82rem;color:var(--muted);margin-top:0.5rem">Press play. Dim the lights.</p>`;
+        <p style="font-size:0.85rem;color:var(--muted);margin-top:0.55rem">Soft reading — reflection, poem, and a line to hold.</p>`;
       btn.textContent = "🎙️ Play again";
     } catch {
       toast("Voice couldn’t be generated right now.");
-      btn.textContent = "🎙️ Play bedtime reflection";
+      btn.textContent = "🎙️ Play soft reading";
     } finally {
       btn.disabled = false;
       btn.classList.remove("loading");
@@ -187,11 +222,7 @@ ${r.ambient}
       const res = await fetch("/api/close", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          notes,
-          mood,
-          model: preferredModel,
-        }),
+        body: JSON.stringify({ notes, mood, model: preferredModel }),
       });
       if (!res.ok) throw new Error("close failed");
       const data = await res.json();
