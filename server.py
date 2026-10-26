@@ -36,6 +36,8 @@ class CloseResponse(BaseModel):
     summary: str
     open_loops: str
     bedtime: str
+    poem: str = ""
+    quote: str = ""
     tomorrow: str
     ambient: str
     used_fallback: bool
@@ -87,6 +89,8 @@ def close_day(body: CloseRequest):
         "summary": result["summary"],
         "open_loops": result["open_loops"],
         "bedtime": result["bedtime"],
+        "poem": result.get("poem", ""),
+        "quote": result.get("quote", ""),
         "tomorrow": result["tomorrow"],
         "ambient": result["ambient"],
         "used_fallback": result.get("used_fallback", False),
