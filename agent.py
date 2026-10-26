@@ -1,8 +1,6 @@
 """
 Core agent for SlothCloser.
-- One structured Ollama call (fast) instead of five sequential calls
-- High-quality offline fallbacks when no model is available
-- Local JSON history (MongoDB Atlas–ready document shape)
+One structured Ollama call · offline fallbacks · local JSON history
 """
 
 from __future__ import annotations
@@ -29,7 +27,7 @@ class SlothAgent:
         self.model = model
         self.used_fallback = False
 
-    def _chat(self, prompt: str, max_tokens: int = 420) -> Optional[str]:
+    def _chat(self, prompt: str, max_tokens: int = 520) -> Optional[str]:
         if not OLLAMA_AVAILABLE:
             return None
         try:
@@ -39,16 +37,12 @@ class SlothAgent:
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "user", "content": prompt},
                 ],
-                options={
-                    "temperature": TEMPERATURE,
-                    "num_predict": max_tokens,
-                },
+                options={"temperature": TEMPERATURE, "num_predict": max_tokens},
             )
             return response["message"]["content"].strip()
         except Exception:
             return None
 
-    # ---------- Offline fallbacks (instant) ----------
     def _fallback(self, notes: str, mood: str) -> dict:
         lines = [l.strip() for l in notes.strip().split("\n") if l.strip()]
         preview = " ".join(lines[:2]) if lines else ""
@@ -62,7 +56,6 @@ class SlothAgent:
             else "A quiet day. Nothing much needed to be written down."
         )
 
-        # Simple open-loop extraction
         text = notes.lower()
         candidates = []
         for pattern in [
@@ -84,7 +77,8 @@ class SlothAgent:
                 "You are tired, and that is information worth listening to. "
                 "The day does not need any more effort from you tonight. "
                 "Whatever is unfinished can wait in the quiet. "
-                "Rest is not a reward — it is part of the work. Sleep well."
+                "Rest is not a reward — it is part of the work. "
+                "Set everything down. Sleep well."
             ),
             "heavy": (
                 "Some days feel heavier than others. This seems to be one of them. "
@@ -110,6 +104,15 @@ class SlothAgent:
             "Let the remaining pieces wait until morning. Sleep well.",
         )
 
+        poem = (
+            "The house settles.\n"
+            "A window holds the dark.\n"
+            "Nothing more is asked of you.\n"
+            "Breath in, breath out —\n"
+            "the night can carry the rest."
+        )
+        quote = "You can put the day down now. It will keep without you."
+
         ambient_map = {
             "tired": "Soft rain on a quiet window, distant thunder very far away, a single candle flame.",
             "heavy": "Low wind through pine trees at night, occasional creak of wood, deep steady breathing.",
@@ -124,47 +127,40 @@ class SlothAgent:
             "summary": summary,
             "open_loops": open_loops,
             "bedtime": bedtime,
+            "poem": poem,
+            "quote": quote,
             "tomorrow": "Nothing urgent. Let tomorrow arrive gently.",
             "ambient": ambient,
         }
 
     def _parse_structured(self, raw: str) -> Optional[dict]:
-        """Parse the single structured response into sections."""
         try:
+            # Strip leaked instruction artifacts
+            raw = re.sub(r"(?im)^\s*mood note:.*$", "", raw)
             sections = {}
             current = None
             buf = []
+            headers = {
+                "SUMMARY": "summary",
+                "OPEN": "open_loops",
+                "BEDTIME": "bedtime",
+                "POEM": "poem",
+                "QUOTE": "quote",
+                "TOMORROW": "tomorrow",
+                "AMBIENT": "ambient",
+            }
             for line in raw.splitlines():
                 upper = line.strip().upper()
-                if upper.startswith("SUMMARY:"):
+                matched = None
+                for h, key in headers.items():
+                    if upper.startswith(h + ":") or upper == h:
+                        matched = key
+                        break
+                if matched:
                     if current and buf:
                         sections[current] = "\n".join(buf).strip()
-                    current = "summary"
-                    rest = line.split(":", 1)[-1].strip()
-                    buf = [rest] if rest else []
-                elif upper.startswith("OPEN:"):
-                    if current and buf:
-                        sections[current] = "\n".join(buf).strip()
-                    current = "open_loops"
-                    rest = line.split(":", 1)[-1].strip()
-                    buf = [rest] if rest else []
-                elif upper.startswith("BEDTIME:"):
-                    if current and buf:
-                        sections[current] = "\n".join(buf).strip()
-                    current = "bedtime"
-                    rest = line.split(":", 1)[-1].strip()
-                    buf = [rest] if rest else []
-                elif upper.startswith("TOMORROW:"):
-                    if current and buf:
-                        sections[current] = "\n".join(buf).strip()
-                    current = "tomorrow"
-                    rest = line.split(":", 1)[-1].strip()
-                    buf = [rest] if rest else []
-                elif upper.startswith("AMBIENT:"):
-                    if current and buf:
-                        sections[current] = "\n".join(buf).strip()
-                    current = "ambient"
-                    rest = line.split(":", 1)[-1].strip()
+                    current = matched
+                    rest = line.split(":", 1)[-1].strip() if ":" in line else ""
                     buf = [rest] if rest else []
                 else:
                     if current is not None:
@@ -172,8 +168,19 @@ class SlothAgent:
             if current and buf:
                 sections[current] = "\n".join(buf).strip()
 
+            # Clean leftover prompt debris
+            for k, v in list(sections.items()):
+                v = re.sub(r"(?im)^\s*mood note:.*$", "", v).strip()
+                v = re.sub(r"(?im)^\s*tone for this user:.*$", "", v).strip()
+                sections[k] = v
+
             required = ["summary", "open_loops", "bedtime", "tomorrow", "ambient"]
             if all(k in sections and sections[k] for k in required):
+                sections.setdefault(
+                    "poem",
+                    "The house settles.\nA window holds the dark.\nNothing more is asked of you.",
+                )
+                sections.setdefault("quote", "You can put the day down now.")
                 return sections
         except Exception:
             pass
@@ -188,6 +195,8 @@ class SlothAgent:
                 "summary": "No notes provided.",
                 "open_loops": "Nothing to close.",
                 "bedtime": "Rest well. Tomorrow will wait for you.",
+                "poem": "Quiet now.\nThe day has done enough.",
+                "quote": "You can stop carrying it.",
                 "tomorrow": "Nothing urgent. Let tomorrow arrive gently.",
                 "ambient": "Quiet room at night, soft rain in the distance.",
                 "used_fallback": False,
@@ -195,16 +204,13 @@ class SlothAgent:
                 "mood": mood,
             }
 
-        mood_instruction = MOOD_INSTRUCTIONS.get(mood, "")
-        if mood_instruction:
-            mood_instruction = f"\nMood note: {mood_instruction}"
-
+        mood_instruction = MOOD_INSTRUCTIONS.get(mood, MOOD_INSTRUCTIONS["neutral"])
         prompt = CLOSE_DAY_PROMPT.format(
             notes=notes.strip(),
             mood_instruction=mood_instruction,
         )
 
-        raw = self._chat(prompt, max_tokens=420)
+        raw = self._chat(prompt, max_tokens=520)
         if raw:
             parsed = self._parse_structured(raw)
             if parsed:
@@ -215,15 +221,9 @@ class SlothAgent:
                     "mood": mood,
                 }
 
-        # Fallback path
         self.used_fallback = True
         fb = self._fallback(notes, mood)
-        return {
-            **fb,
-            "used_fallback": True,
-            "timestamp": ts,
-            "mood": mood,
-        }
+        return {**fb, "used_fallback": True, "timestamp": ts, "mood": mood}
 
 
 def list_available_models() -> list:
@@ -249,9 +249,7 @@ def list_available_models() -> list:
         return []
 
 
-# ---------- Local history (MongoDB Atlas–ready document shape) ----------
 def save_closing(result: dict, notes: str) -> Path:
-    """Persist a closing as a JSON document. Shape is ready for Atlas."""
     HISTORY_DIR.mkdir(exist_ok=True)
     doc = {
         "_id": str(uuid.uuid4()),
@@ -261,6 +259,8 @@ def save_closing(result: dict, notes: str) -> Path:
         "summary": result.get("summary", ""),
         "open_loops": result.get("open_loops", ""),
         "bedtime": result.get("bedtime", ""),
+        "poem": result.get("poem", ""),
+        "quote": result.get("quote", ""),
         "tomorrow": result.get("tomorrow", ""),
         "ambient": result.get("ambient", ""),
         "used_fallback": result.get("used_fallback", False),
@@ -273,7 +273,6 @@ def save_closing(result: dict, notes: str) -> Path:
 
 
 def load_recent_closings(limit: int = 12) -> list:
-    """Load recent local closings (newest first)."""
     if not HISTORY_DIR.exists():
         return []
     files = sorted(HISTORY_DIR.glob("closing_*.json"), reverse=True)
