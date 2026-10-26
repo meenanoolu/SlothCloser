@@ -1,23 +1,17 @@
 # 🦥 SlothCloser
 
-**A calm, local evening wind-down agent** that closes the day for you - slowly, kindly, offline.
+A calm local agent that closes the day for you.
 
-> Hacktoberfest Open-Source AI Challenge · Week 3: Slow and Steady
+> Hacktoberfest · Week 3: Slow and Steady
 
-**Live demo:** [https://sloth-closer.onrender.com](https://sloth-closer.onrender.com)
+**Demo:** https://sloth-closer.onrender.com
 
 ---
 
-## What it does
+## The idea
 
-Dump whatever is still on your mind. You get:
-
-1. Short human day summary  
-2. Things still open  
-3. Soft bedtime reflection (mood-aware)  
-4. One optional tiny thing for tomorrow  
-5. Ambient soundscape prompt  
-6. **Spoken bedtime voice** via ElevenLabs (when API key is set)
+You dump whatever is still on your mind.  
+It hands back a short summary, open loops, a soft bedtime reflection, one optional tiny thing for tomorrow, an ambient prompt — and can **speak** the reflection out loud.
 
 Then:
 
@@ -28,59 +22,40 @@ Then:
 
 ## Why open-weight / local
 
-Evening thoughts stay on your machine. No account. Zero ongoing cost. Works offline after the model is pulled. Swap Gemma / Llama / Qwen whenever you want.
+Your evening thoughts stay on your machine. No account. Zero ongoing cost. Works offline after the model is pulled.
 
 ---
 
-## Partner tech (actually wired)
+## Partner tech (wired into the product)
 
-| Partner | In the product |
-|---------|----------------|
+| Partner | Role |
+|---------|------|
 | **Gemma** | Default open-weight model |
 | **Ollama** | Local inference |
 | **Render** | Hosting + Blueprint |
-| **ElevenLabs** | Real in-app TTS for the bedtime reflection |
-| **MongoDB Atlas** | Local history uses Atlas-ready document shape |
+| **ElevenLabs** | Premium bedtime voice when `ELEVENLABS_API_KEY` is set |
+| **edge-tts** | Free neural voice so demos always speak without a key |
+| **MongoDB Atlas** | Local history uses Atlas-ready documents |
 
 ---
 
-## Quick start
+## Run
 
 ```bash
-# Optional local model
-ollama pull gemma2:2b
-
-# App
+ollama pull gemma2:2b   # optional but best
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 streamlit run app.py
 ```
 
-### Enable ElevenLabs voice (optional)
+### Optional: ElevenLabs quality voice
 
-Create a `.env` in the project root:
-
-```
-ELEVENLABS_API_KEY=your_key_here
-# optional:
-# ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM
+```bash
+# .env
+ELEVENLABS_API_KEY=your_key
 ```
 
-Or in Streamlit Cloud / Render: set the same env var / secret.
-
-Then after closing a day, click **Speak the reflection** — audio plays in the app. No pasting into another site.
-
----
-
-## Speed
-
-One structured model call (not five). Much faster on small models.
-
----
-
-## UI
-
-Ambient motion background, glass cards, staggered reveals, breathing hero, soft payoff animation. Built to feel like a focused evening app, not a dashboard.
+Without a key the app still speaks using a free neural voice. Users never see key setup messages in the UI.
 
 ---
 

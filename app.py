@@ -14,9 +14,8 @@ from config import (
     MOODS,
     CHALLENGE_TAG,
     APP_VERSION,
-    ELEVENLABS_API_KEY,
 )
-from voice import is_voice_available, synthesize_bedtime
+from voice import synthesize, has_elevenlabs
 
 st.set_page_config(
     page_title=APP_TITLE,
@@ -32,6 +31,7 @@ for k, v in {
     "page": "home",
     "voice_bytes": None,
     "voice_error": None,
+    "voice_provider": "",
 }.items():
     if k not in st.session_state:
         st.session_state[k] = v
@@ -459,8 +459,6 @@ if st.session_state.page == "home":
             st.markdown(f'<div class="badge badge-local">● Local open-weight · {model}</div>', unsafe_allow_html=True)
         else:
             st.markdown('<div class="badge badge-fallback">○ Offline fallback active</div>', unsafe_allow_html=True)
-        if is_voice_available():
-            st.markdown('<div class="badge badge-voice">🎙️ ElevenLabs voice ready</div>', unsafe_allow_html=True)
     with cm:
         if available and len(available) > 1:
             model = st.selectbox("Model", available, index=available.index(model) if model in available else 0, label_visibility="collapsed")
@@ -556,34 +554,37 @@ if st.session_state.page == "home":
             </div>
             """, unsafe_allow_html=True)
 
-        # ElevenLabs voice – real in-app playback
+        # Bedtime voice — always works (edge-tts free, ElevenLabs if key set)
         st.markdown("""
         <div class="voice-box">
             <div class="voice-label">Bedtime voice</div>
         </div>
         """, unsafe_allow_html=True)
 
-        if is_voice_available():
-            if st.session_state.voice_bytes is None and st.session_state.voice_error is None:
-                if st.button("🎙️ Speak the reflection", use_container_width=True, key="gen_voice"):
-                    with st.spinner("Generating calm voice…"):
-                        audio = synthesize_bedtime(result["bedtime"])
-                        if audio:
-                            st.session_state.voice_bytes = audio
-                            st.session_state.voice_error = None
-                        else:
-                            st.session_state.voice_error = "Could not generate voice. Check your API key or try again."
-                        st.rerun()
-            if st.session_state.voice_bytes:
-                st.audio(st.session_state.voice_bytes, format="audio/mp3")
-                st.caption("Generated with ElevenLabs — play while the lights go down.")
-            elif st.session_state.voice_error:
+        if st.session_state.voice_bytes is None:
+            if st.button("🎙️ Play bedtime reflection", type="primary", use_container_width=True, key="gen_voice"):
+                with st.spinner("Speaking softly…"):
+                    audio, provider = synthesize(result["bedtime"])
+                    if audio:
+                        st.session_state.voice_bytes = audio
+                        st.session_state.voice_provider = provider
+                        st.session_state.voice_error = None
+                    else:
+                        st.session_state.voice_error = "Voice could not be generated right now. You can still read the reflection above."
+                    st.rerun()
+            if st.session_state.voice_error:
                 st.caption(st.session_state.voice_error)
         else:
-            st.caption(
-                "Add `ELEVENLABS_API_KEY` to a `.env` file (or Streamlit secrets) to hear the reflection spoken in-app. "
-                "Free tier works for demos."
-            )
+            st.audio(st.session_state.voice_bytes, format="audio/mp3")
+            provider = st.session_state.get("voice_provider", "")
+            if provider == "ElevenLabs":
+                st.caption("Spoken with ElevenLabs — press play, dim the lights.")
+            else:
+                st.caption("Spoken softly — press play, dim the lights.")
+            if st.button("Generate again", use_container_width=False, key="regen_voice"):
+                st.session_state.voice_bytes = None
+                st.session_state.voice_error = None
+                st.rerun()
 
         st.markdown("""
         <div class="payoff">
@@ -672,7 +673,7 @@ Swap models whenever you want. Works offline after the first pull.
 - **Gemma** — default open-weight model  
 - **Ollama** — local inference  
 - **Render** — live demo + Blueprint  
-- **ElevenLabs** — real in-app voice for the bedtime reflection (optional API key)  
+- **Voice** — bedtime reflection spoken in-app (ElevenLabs when configured, free neural voice otherwise)  
 - **MongoDB Atlas–ready** local history documents  
 """)
 
