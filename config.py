@@ -1,22 +1,24 @@
-"""Configuration for SlothCloser."""
+"""Configuration for SlothCloser – calm local evening wind-down agent."""
 
 import os
 from pathlib import Path
 
-# Default model – change this to whatever you have pulled in Ollama
+# Primary open-weight model (Gemma family preferred for the challenge)
 DEFAULT_MODEL = os.getenv("SLOTH_MODEL", "gemma2:2b")
 
 # Soft temperature for calm, steady responses
-TEMPERATURE = 0.6
+TEMPERATURE = 0.55
 
-# App title & branding
+# App branding
 APP_TITLE = "SlothCloser"
-APP_SUBTITLE = "Slow & steady evening closer"
+APP_SUBTITLE = "Your calm local agent that closes the day for you"
 APP_ICON = "🦥"
+APP_VERSION = "1.1.0"
 
 # Paths
 BASE_DIR = Path(__file__).parent
-HISTORY_DIR = BASE_DIR / "closings"          # local history of past closings
+HISTORY_DIR = BASE_DIR / "closings"
+HISTORY_DIR.mkdir(exist_ok=True)
 
 # Mood options shown in the UI
 MOODS = {
@@ -26,3 +28,15 @@ MOODS = {
     "light": "Light / Content",
     "grateful": "Grateful",
 }
+
+# Challenge context
+CHALLENGE_TAG = "Hacktoberfest Open-Source AI Challenge Week 3: Slow and Steady"
+
+# Partner categories this project genuinely uses or is ready for
+PARTNERS = [
+    "Gemma (open-weight core)",
+    "Render (hosting + Blueprint)",
+    "Ollama (local inference)",
+    "ElevenLabs-ready (voice bedtime reflection)",
+    "MongoDB Atlas-ready (closing history)",
+]
