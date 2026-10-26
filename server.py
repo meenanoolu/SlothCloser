@@ -1,16 +1,15 @@
 """
 SlothCloser API + static frontend
-FastAPI · Ollama/Gemma · edge-tts voice · local history
+FastAPI · Ollama/Gemma · local history
 """
 
 from __future__ import annotations
 
-import io
 from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -18,7 +17,6 @@ from agent import (SlothAgent, list_available_models, load_recent_closings,
                    save_closing)
 from config import (APP_TITLE, APP_VERSION, DEFAULT_MODEL, HISTORY_DIR,
                     MOODS, STATIC_DIR)
-from voice import synthesize
 
 app = FastAPI(title=APP_TITLE, version=APP_VERSION)
 
@@ -43,10 +41,6 @@ class CloseResponse(BaseModel):
     used_fallback: bool
     timestamp: str
     mood: str
-
-
-class VoiceRequest(BaseModel):
-    text: str = Field(..., min_length=1)
 
 
 @app.get("/api/health")
@@ -99,16 +93,6 @@ def close_day(body: CloseRequest):
     })
 
 
-@app.post("/api/voice")
-def voice(body: VoiceRequest):
-    audio = synthesize(body.text)
-    if not audio:
-        raise HTTPException(status_code=503, detail="Voice generation failed")
-    return StreamingResponse(
-        io.BytesIO(audio),
-        media_type="audio/mpeg",
-        headers={"Content-Disposition": "inline; filename=bedtime.mp3"},
-    )
 
 
 @app.get("/api/history")
