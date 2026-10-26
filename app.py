@@ -6,7 +6,15 @@ A calm, offline companion that helps you close the day.
 import streamlit as st
 from pathlib import Path
 from agent import SlothAgent, list_available_models
-from config import APP_TITLE, APP_SUBTITLE, APP_ICON, DEFAULT_MODEL, MOODS
+from config import (
+    APP_TITLE,
+    APP_SUBTITLE,
+    APP_ICON,
+    DEFAULT_MODEL,
+    MOODS,
+    CHALLENGE_TAG,
+    APP_VERSION,
+)
 
 st.set_page_config(
     page_title=APP_TITLE,
@@ -50,7 +58,7 @@ html, body, .stApp {
 
 .block-container {
     max-width: 680px;
-    padding-top: 2rem;
+    padding-top: 1.6rem;
     padding-bottom: 3rem;
 }
 
@@ -60,39 +68,42 @@ html, body, .stApp {
 /* Hero */
 .hero {
     text-align: center;
-    margin-bottom: 2.2rem;
+    margin-bottom: 1.8rem;
 }
 .hero-emoji {
-    font-size: 3.4rem;
+    font-size: 3.2rem;
     line-height: 1;
-    margin-bottom: 0.6rem;
-    filter: drop-shadow(0 4px 12px rgba(156, 191, 156, 0.25));
+    margin-bottom: 0.5rem;
+    filter: drop-shadow(0 4px 14px rgba(156, 191, 156, 0.28));
 }
 .hero-title {
     font-family: 'Cormorant Garamond', Georgia, serif !important;
-    font-size: 3rem !important;
+    font-size: 2.9rem !important;
     font-weight: 600 !important;
     letter-spacing: -0.03em;
     color: var(--text) !important;
-    margin: 0 0 0.3rem 0 !important;
+    margin: 0 0 0.25rem 0 !important;
 }
 .hero-sub {
     font-family: 'Inter', sans-serif;
-    font-size: 1.05rem;
+    font-size: 1.02rem;
     color: var(--text-muted);
     font-weight: 400;
     letter-spacing: 0.01em;
+    max-width: 420px;
+    margin: 0 auto;
+    line-height: 1.5;
 }
 
 /* Section labels */
 .section-label {
     font-family: 'Inter', sans-serif;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     font-weight: 600;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.09em;
     text-transform: uppercase;
     color: var(--text-muted);
-    margin: 1.6rem 0 0.7rem 0;
+    margin: 1.4rem 0 0.55rem 0;
 }
 
 /* Text area */
@@ -104,7 +115,7 @@ html, body, .stApp {
     font-size: 1.02rem !important;
     line-height: 1.7 !important;
     padding: 1.15rem 1.25rem !important;
-    min-height: 150px !important;
+    min-height: 155px !important;
     transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
 }
 .stTextArea textarea:focus {
@@ -112,9 +123,8 @@ html, body, .stApp {
     box-shadow: 0 0 0 3px var(--glow) !important;
 }
 
-/* Primary button */
-.stButton > button[kind="primary"],
-div[data-testid="stVerticalBlock"] > div:has(button) button {
+/* Buttons */
+.stButton > button {
     border-radius: 14px !important;
     font-weight: 600 !important;
     font-size: 1.02rem !important;
@@ -123,17 +133,17 @@ div[data-testid="stVerticalBlock"] > div:has(button) button {
     transition: all 0.2s ease !important;
 }
 
-/* Main close button */
-button[data-testid="baseButton-secondary"] {
+/* Primary close button */
+button[kind="primary"] {
     background: linear-gradient(135deg, #9cbf9c, #6f8f6f) !important;
     color: #0b0f14 !important;
 }
-button[data-testid="baseButton-secondary"]:hover {
+button[kind="primary"]:hover {
     transform: translateY(-1px);
     box-shadow: 0 8px 28px rgba(156, 191, 156, 0.35) !important;
 }
 
-/* Secondary / load example */
+/* Secondary buttons */
 div[data-testid="stHorizontalBlock"] button {
     background: var(--surface) !important;
     color: var(--text-muted) !important;
@@ -145,8 +155,6 @@ div[data-testid="stHorizontalBlock"] button:hover {
     border-color: var(--accent) !important;
     color: var(--accent) !important;
     background: var(--surface-2) !important;
-    box-shadow: none !important;
-    transform: none !important;
 }
 
 /* Radio mood */
@@ -180,16 +188,16 @@ div[data-testid="stHorizontalBlock"] button:hover {
 }
 .result-card .card-label {
     font-family: 'Inter', sans-serif;
-    font-size: 0.75rem;
+    font-size: 0.74rem;
     font-weight: 600;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.07em;
     text-transform: uppercase;
     color: var(--accent);
     margin-bottom: 0.55rem;
 }
 .result-card .card-body {
     font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 1.2rem;
+    font-size: 1.22rem;
     line-height: 1.65;
     color: var(--text);
     white-space: pre-wrap;
@@ -197,26 +205,26 @@ div[data-testid="stHorizontalBlock"] button:hover {
 
 /* Payoff */
 .payoff {
-    background: linear-gradient(145deg, rgba(156, 191, 156, 0.1), rgba(156, 191, 156, 0.03));
-    border: 1px solid rgba(156, 191, 156, 0.25);
+    background: linear-gradient(145deg, rgba(156, 191, 156, 0.11), rgba(156, 191, 156, 0.03));
+    border: 1px solid rgba(156, 191, 156, 0.28);
     border-radius: 18px;
-    padding: 1.6rem 1.5rem;
+    padding: 1.7rem 1.5rem;
     text-align: center;
-    margin: 1.6rem 0 1.2rem 0;
+    margin: 1.7rem 0 1.3rem 0;
 }
 .payoff-title {
     font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 1.55rem;
+    font-size: 1.65rem;
     color: var(--accent);
-    margin-bottom: 0.3rem;
+    margin-bottom: 0.35rem;
 }
 .payoff-text {
-    font-size: 0.95rem;
+    font-size: 0.97rem;
     color: var(--text-muted);
-    line-height: 1.5;
+    line-height: 1.55;
 }
 
-/* Badge */
+/* Badges */
 .badge {
     display: inline-flex;
     align-items: center;
@@ -247,7 +255,7 @@ div[data-testid="stHorizontalBlock"] button:hover {
 /* Empty state */
 .empty {
     text-align: center;
-    padding: 2.5rem 1.5rem;
+    padding: 2.4rem 1.5rem;
     background: var(--surface);
     border: 1px dashed var(--border);
     border-radius: 18px;
@@ -255,33 +263,47 @@ div[data-testid="stHorizontalBlock"] button:hover {
 }
 .empty-icon {
     font-size: 2.2rem;
-    margin-bottom: 0.7rem;
+    margin-bottom: 0.65rem;
     opacity: 0.9;
 }
 .empty p {
     color: var(--text-muted);
     font-size: 0.98rem;
     line-height: 1.6;
-    max-width: 300px;
+    max-width: 310px;
     margin: 0 auto;
 }
 
 /* Footer */
 .footer {
     text-align: center;
-    color: var(--text-muted);
+    margin-top: 2.8rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--border);
     font-size: 0.78rem;
-    margin-top: 3rem;
-    opacity: 0.6;
+    color: var(--text-muted);
+    line-height: 1.7;
 }
 
-/* Expander */
-.streamlit-expanderHeader {
+/* History chips */
+.history-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.7rem 1rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.88rem;
+    color: var(--text-muted);
+}
+.history-item strong {
+    color: var(--text);
+}
+
+/* Select / other Streamlit widgets */
+.stSelectbox > div > div {
     background: var(--surface) !important;
     border-radius: 12px !important;
-    border: 1px solid var(--border) !important;
-    font-size: 0.9rem !important;
-    color: var(--text-muted) !important;
+    border-color: var(--border) !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -289,86 +311,62 @@ div[data-testid="stHorizontalBlock"] button:hover {
 # -------------------------------------------------
 # Hero
 # -------------------------------------------------
-st.markdown("""
+st.markdown(f"""
 <div class="hero">
-    <div class="hero-emoji">🦥</div>
-    <h1 class="hero-title">SlothCloser</h1>
-    <p class="hero-sub">Slow &amp; steady evening closer</p>
+    <div class="hero-emoji">{APP_ICON}</div>
+    <h1 class="hero-title">{APP_TITLE}</h1>
+    <p class="hero-sub">{APP_SUBTITLE}</p>
 </div>
 """, unsafe_allow_html=True)
 
-with st.expander("How it works"):
-    st.markdown("""
-1. Dump whatever is on your mind (messy is fine)  
-2. Optionally choose how the day felt  
-3. Click **Close my day**  
-4. Receive a summary, open loops, bedtime reflection, one tiny thing for tomorrow, and an ambient prompt  
-
-Everything can run fully offline with an open-weight model.  
-If no model is available, a calm fallback still works.
-""")
-
 # -------------------------------------------------
-# Sidebar
+# Model status + selection
 # -------------------------------------------------
-with st.sidebar:
-    st.markdown("### Settings")
-    available = list_available_models()
-    if available:
-        default_index = available.index(DEFAULT_MODEL) if DEFAULT_MODEL in available else 0
-        model = st.selectbox("Local model", options=available, index=default_index)
+available = list_available_models()
+model = DEFAULT_MODEL
+if available:
+    # Prefer any Gemma if present
+    gemma = [m for m in available if "gemma" in m.lower()]
+    if gemma:
+        model = gemma[0]
     else:
-        st.info("No local models detected → calm offline fallback will be used.")
-        model = st.text_input("Model name (optional)", value=DEFAULT_MODEL)
+        model = available[0]
 
-    st.caption("Tip: `ollama pull gemma2:2b`")
-    st.caption("Works fully offline once the model is downloaded.")
-
-    if st.session_state.history:
-        st.markdown("---")
-        st.markdown("### Recent closings")
-        for i, item in enumerate(reversed(st.session_state.history[-4:])):
-            label = f"{item['timestamp']} · {item.get('mood', 'neutral')}"
-            if st.button(label, key=f"hist_{i}"):
-                st.session_state.notes = item.get("notes", "")
-                st.session_state.last_result = None
-                st.rerun()
+col_status, col_model = st.columns([2, 1])
+with col_status:
+    if available:
+        st.markdown(
+            f'<div class="badge badge-local">Local open-weight ready · {model}</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            '<div class="badge badge-fallback">No local model detected — calm offline fallback active</div>',
+            unsafe_allow_html=True,
+        )
+with col_model:
+    if available and len(available) > 1:
+        model = st.selectbox("Model", available, index=available.index(model) if model in available else 0, label_visibility="collapsed")
 
 # -------------------------------------------------
-# Input
+# Notes input
 # -------------------------------------------------
-st.markdown('<div class="section-label">What happened today</div>', unsafe_allow_html=True)
-
-col_a, col_b = st.columns([1, 3])
-with col_a:
-    if st.button("Load example", use_container_width=True):
-        example_path = Path(__file__).parent / "example-notes.md"
-        if example_path.exists():
-            st.session_state.notes = example_path.read_text(encoding="utf-8")
-            st.session_state.last_result = None
-            st.rerun()
+st.markdown('<div class="section-label">What is still on your mind?</div>', unsafe_allow_html=True)
 
 notes = st.text_area(
-    label="notes",
+    "notes",
     value=st.session_state.notes,
     height=160,
-    placeholder="Paste your daily notes or just dump whatever is on your mind...",
+    placeholder="Dump anything. Messy is fine. No structure required.\n\nFinished the design notes…\nStill need to reply to Maya…\nFeeling a little tired but content…",
     label_visibility="collapsed",
-    key="notes_input",
 )
 st.session_state.notes = notes
 
-uploaded = st.file_uploader("Or load a markdown / text file", type=["md", "txt", "markdown"])
-if uploaded is not None:
-    notes = uploaded.read().decode("utf-8")
-    st.session_state.notes = notes
-    st.session_state.last_result = None
-    st.success(f"Loaded `{uploaded.name}`")
-
-st.markdown('<div class="section-label">How does the day feel</div>', unsafe_allow_html=True)
+# Mood
+st.markdown('<div class="section-label">How does the day feel?</div>', unsafe_allow_html=True)
 mood_keys = list(MOODS.keys())
 mood_labels = list(MOODS.values())
-mood_index = st.radio(
+selected_idx = st.radio(
     "mood",
     options=range(len(mood_keys)),
     format_func=lambda i: mood_labels[i],
@@ -376,34 +374,43 @@ mood_index = st.radio(
     label_visibility="collapsed",
     index=0,
 )
-selected_mood = mood_keys[mood_index]
+selected_mood = mood_keys[selected_idx]
 
-st.write("")
-_, col_btn, _ = st.columns([0.8, 2, 0.8])
-with col_btn:
-    close_btn = st.button("🦥  Close my day", use_container_width=True, type="primary")
+# Action row
+c1, c2, c3 = st.columns([2, 1, 1])
+with c1:
+    close_clicked = st.button("Close the day", type="primary", use_container_width=True)
+with c2:
+    if st.button("Load example", use_container_width=True):
+        example_path = Path(__file__).parent / "example-notes.md"
+        if example_path.exists():
+            st.session_state.notes = example_path.read_text(encoding="utf-8")
+            st.rerun()
+with c3:
+    if st.button("Clear", use_container_width=True):
+        st.session_state.notes = ""
+        st.session_state.last_result = None
+        st.rerun()
 
 # -------------------------------------------------
-# Process
+# Run the agent
 # -------------------------------------------------
-if close_btn:
-    if not notes or not notes.strip():
-        st.warning("Write a few lines about your day first.")
+if close_clicked:
+    if not (notes or "").strip():
+        st.warning("Write a few notes first — even one line is enough.")
     else:
-        with st.status("Taking it slow…", expanded=True) as status:
-            status.write("Reading your notes…")
+        with st.spinner("Closing the day… slowly…"):
             agent = SlothAgent(model=model)
             result = agent.close_day(notes, mood=selected_mood)
-            status.update(label="Day closed", state="complete", expanded=False)
-
-        st.session_state.history.append({
-            "timestamp": result["timestamp"],
-            "mood": selected_mood,
-            "notes": notes,
-            **{k: result[k] for k in ["summary", "open_loops", "bedtime", "tomorrow", "ambient"]},
-        })
-        st.session_state.last_result = result
-        st.rerun()
+            result["mood"] = selected_mood
+            st.session_state.history.append({
+                "timestamp": result["timestamp"],
+                "mood": selected_mood,
+                "notes": notes,
+                **{k: result[k] for k in ["summary", "open_loops", "bedtime", "tomorrow", "ambient"]},
+            })
+            st.session_state.last_result = result
+            st.rerun()
 
 # -------------------------------------------------
 # Results
@@ -425,9 +432,12 @@ if result:
     if result.get("used_fallback"):
         st.markdown('<div class="badge badge-fallback">Using calm offline fallback</div>', unsafe_allow_html=True)
     else:
-        st.markdown(f'<div class="badge badge-local">Local open-weight model · {model}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="badge badge-local">Local open-weight · {model}</div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="meta">{result["timestamp"]} · {MOODS.get(result.get("mood", selected_mood), selected_mood)}</div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="meta">{result["timestamp"]} · {MOODS.get(result.get("mood", selected_mood), selected_mood)}</div>',
+        unsafe_allow_html=True,
+    )
 
     cards = [
         ("Day summary", result["summary"]),
@@ -438,14 +448,19 @@ if result:
     ]
 
     for label, content in cards:
+        safe = (
+            content.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+        )
         st.markdown(f"""
         <div class="result-card">
             <div class="card-label">{label}</div>
-            <div class="card-body">{content}</div>
+            <div class="card-body">{safe}</div>
         </div>
         """, unsafe_allow_html=True)
 
-    # Payoff
+    # The emotional payoff — the whole point of the tool
     st.markdown("""
     <div class="payoff">
         <div class="payoff-title">Day closed.</div>
@@ -480,8 +495,23 @@ if result:
         use_container_width=True,
     )
 
-st.markdown("""
+# -------------------------------------------------
+# Recent closings (lightweight personal memory)
+# -------------------------------------------------
+if st.session_state.history:
+    with st.expander(f"Recent closings ({len(st.session_state.history)})", expanded=False):
+        for h in reversed(st.session_state.history[-5:]):
+            st.markdown(f"""
+            <div class="history-item">
+                <strong>{h['timestamp']}</strong> · {MOODS.get(h.get('mood', 'neutral'), h.get('mood', ''))}<br>
+                {h.get('summary', '')[:140]}{'…' if len(h.get('summary', '')) > 140 else ''}
+            </div>
+            """, unsafe_allow_html=True)
+
+st.markdown(f"""
 <div class="footer">
-    Built for Hacktoberfest · Runs offline with open-weight models · Take it slow
+    {CHALLENGE_TAG}<br>
+    Open-weight models · Local-first · Zero ongoing cost · v{APP_VERSION}<br>
+    Take it slow.
 </div>
 """, unsafe_allow_html=True)
