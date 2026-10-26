@@ -6,25 +6,49 @@
   let preferredModel = null;
   let lastResult = null;
 
-  // Cursor parallax on background orbs
+  // ── Cursor-reactive background ──
+  // Parallax is applied to a wrapper so it does not fight CSS keyframe transforms.
+  const layer = document.createElement("div");
+  layer.className = "parallax-layer";
+  const bg = $(".bg");
   const orbs = $$(".orb");
+  if (bg && bg.parentNode) {
+    bg.parentNode.insertBefore(layer, bg);
+    layer.appendChild(bg);
+    orbs.forEach((o) => layer.appendChild(o));
+  }
+
   let targetX = 0, targetY = 0, curX = 0, curY = 0;
-  window.addEventListener("mousemove", (e) => {
+  const onMove = (e) => {
     const cx = window.innerWidth / 2;
     const cy = window.innerHeight / 2;
-    targetX = (e.clientX - cx) / cx;
+    targetX = (e.clientX - cx) / cx; // -1 .. 1
     targetY = (e.clientY - cy) / cy;
-  });
-  function tickParallax() {
-    curX += (targetX - curX) * 0.06;
-    curY += (targetY - curY) * 0.06;
+  };
+  window.addEventListener("mousemove", onMove, { passive: true });
+  window.addEventListener(
+    "touchmove",
+    (e) => {
+      if (!e.touches[0]) return;
+      onMove(e.touches[0]);
+    },
+    { passive: true }
+  );
+
+  function tick() {
+    curX += (targetX - curX) * 0.08;
+    curY += (targetY - curY) * 0.08;
+    // Move whole ambient layer with the cursor
+    layer.style.transform = `translate3d(${curX * 28}px, ${curY * 22}px, 0)`;
+    // Depth: each orb shifts extra
     orbs.forEach((orb, i) => {
-      const depth = (i + 1) * 12;
-      orb.style.transform = `translate(${curX * depth}px, ${curY * depth}px)`;
+      const d = (i + 1) * 18;
+      orb.style.setProperty("--px", `${curX * d}px`);
+      orb.style.setProperty("--py", `${curY * d}px`);
     });
-    requestAnimationFrame(tickParallax);
+    requestAnimationFrame(tick);
   }
-  requestAnimationFrame(tickParallax);
+  requestAnimationFrame(tick);
 
   // Nav
   $$(".nav-btn").forEach((btn) => {
@@ -125,11 +149,6 @@
     });
 
     html += `
-      <div class="voice">
-        <div class="voice-label">Bedtime voice</div>
-        <button id="btn-voice" class="btn btn-primary" style="width:100%">🎙️ Play soft reading</button>
-        <div id="voice-player"></div>
-      </div>
       <div class="payoff">
         <div class="payoff-title">Day closed.</div>
         <div class="payoff-text">You can stop carrying it now.<br>Whatever is left can wait until morning.</div>
@@ -138,7 +157,6 @@
     `;
 
     box.innerHTML = html;
-    $("#btn-voice").addEventListener("click", playVoice);
     $("#btn-save").addEventListener("click", () => {
       const md = `# Day Closed — ${r.timestamp}
 **Mood:** ${r.mood}
@@ -170,43 +188,6 @@ ${r.ambient}
       a.download = `day-closed-${r.timestamp.replace(/[\s:]/g, "-")}.md`;
       a.click();
     });
-  }
-
-  function voiceScript(r) {
-    // Warm spoken package: reflection + pause + poem + quote
-    const parts = [r.bedtime];
-    if (r.poem) parts.push(r.poem.replace(/\n/g, ". "));
-    if (r.quote) parts.push(r.quote);
-    parts.push("Day closed. You can stop carrying it now.");
-    return parts.filter(Boolean).join("\n\n");
-  }
-
-  async function playVoice() {
-    if (!lastResult) return;
-    const btn = $("#btn-voice");
-    btn.disabled = true;
-    btn.classList.add("loading");
-    btn.textContent = "Speaking softly…";
-    try {
-      const res = await fetch("/api/voice", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: voiceScript(lastResult) }),
-      });
-      if (!res.ok) throw new Error("voice failed");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const player = $("#voice-player");
-      player.innerHTML = `<audio controls autoplay src="${url}"></audio>
-        <p style="font-size:0.85rem;color:var(--muted);margin-top:0.55rem">Soft reading — reflection, poem, and a line to hold.</p>`;
-      btn.textContent = "🎙️ Play again";
-    } catch {
-      toast("Voice couldn’t be generated right now.");
-      btn.textContent = "🎙️ Play soft reading";
-    } finally {
-      btn.disabled = false;
-      btn.classList.remove("loading");
-    }
   }
 
   async function closeDay() {
