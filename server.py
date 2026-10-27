@@ -17,6 +17,7 @@ from agent import (SlothAgent, list_available_models, load_recent_closings,
                    save_closing)
 from config import (APP_TITLE, APP_VERSION, DEFAULT_MODEL, HISTORY_DIR,
                     MOODS, STATIC_DIR)
+from spellfix import fix_notes
 
 app = FastAPI(title=APP_TITLE, version=APP_VERSION)
 
@@ -73,10 +74,11 @@ def moods():
 @app.post("/api/close", response_model=CloseResponse)
 def close_day(body: CloseRequest):
     model = body.model or DEFAULT_MODEL
+    notes = fix_notes(body.notes)
     agent = SlothAgent(model=model)
-    result = agent.close_day(body.notes, mood=body.mood)
+    result = agent.close_day(notes, mood=body.mood)
     try:
-        save_closing(result, body.notes)
+        save_closing(result, notes)
     except Exception:
         pass
     return CloseResponse(**{
